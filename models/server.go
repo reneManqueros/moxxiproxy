@@ -57,8 +57,8 @@ func (p *Proxy) handleTunnel(responseWriter http.ResponseWriter, request *http.R
 	if err != nil {
 		return
 	}
-	p.setDialer()
-	destinationConnection, err := p.Dialer.Dial("tcp", request.Host)
+	_, network := p.setDialer()
+	destinationConnection, err := p.Dialer.Dial(network, request.Host)
 	if err != nil {
 		_ = sourceConnection.Close()
 		return
@@ -69,14 +69,19 @@ func (p *Proxy) handleTunnel(responseWriter http.ResponseWriter, request *http.R
 	go copyIO(destinationConnection, sourceConnection)
 }
 
-func (p *Proxy) setDialer() {
+func (p *Proxy) setDialer() (string, string) {
 	be, _ := p.GetBackend()
-	addr, _ := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:0", be))
+	network := "tcp4"
+	if strings.Contains(be, ":") && len(be) > 15 {
+		network = "tcp6"
+	}
+	addr, _ := net.ResolveTCPAddr(network, fmt.Sprintf("%s:0", be))
 
 	p.Dialer = &net.Dialer{
 		LocalAddr: addr,
 		Timeout:   time.Duration(p.Timeout) * time.Second,
 	}
+	return be, network
 }
 
 func (p *Proxy) isInWhitelist(requestAddress string) bool {
