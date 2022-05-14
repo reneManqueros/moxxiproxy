@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"strings"
 )
 
 func (p *Proxy) GetBackend() (b string, err error) {
@@ -66,31 +67,59 @@ func (p *Proxy) FromDisk() {
 }
 
 func (p *Proxy) Add(backend string) bool {
-	if p.Exists(backend) == false {
-		p.Mutex.Lock()
-		defer p.Mutex.Unlock()
-		p.Backends = append(p.Backends, backend)
-		p.ToDisk()
-		return true
+	backendsToAdd := []string{backend}
+	if strings.Contains(backend, "/") == true {
+		backends, err := ExpandCIDRRange(backend)
+		if err != nil {
+			log.Println("ERROR ExpandCIDRRange", err)
+			return false
+		}
+
+		backendsToAdd = backends
 	}
-	return false
+	addedBackends := false
+	for _, backend := range backendsToAdd {
+		if p.Exists(backend) == false {
+			p.Mutex.Lock()
+			p.Backends = append(p.Backends, backend)
+			p.ToDisk()
+			p.Mutex.Unlock()
+			addedBackends = true
+		}
+	}
+
+	return addedBackends
 }
 
 func (p *Proxy) Remove(backend string) bool {
-	if p.Exists(backend) == true {
-		p.Mutex.Lock()
-		defer p.Mutex.Unlock()
-		var tmpBackends []string
-		for _, b := range p.Backends {
-			if b != backend {
-				tmpBackends = append(tmpBackends, b)
-			}
+	backendsToRemove := []string{backend}
+	if strings.Contains(backend, "/") == true {
+		backends, err := ExpandCIDRRange(backend)
+		if err != nil {
+			log.Println("ERROR ExpandCIDRRange", err)
+			return false
 		}
-		p.Backends = tmpBackends
-		p.ToDisk()
-		return true
+		backendsToRemove = backends
 	}
-	return false
+	removedBackends := false
+
+	for _, backend := range backendsToRemove {
+		if p.Exists(backend) == true {
+			p.Mutex.Lock()
+
+			var tmpBackends []string
+			for _, b := range p.Backends {
+				if b != backend {
+					tmpBackends = append(tmpBackends, b)
+				}
+			}
+			p.Backends = tmpBackends
+			p.ToDisk()
+			p.Mutex.Unlock()
+			removedBackends = true
+		}
+	}
+	return removedBackends
 }
 
 func (p *Proxy) getBackends() {
