@@ -9,8 +9,10 @@
 - [x] Telnet management console
 - [x] Basic Authentication
 - [x] Client whitelist 
-- [x] Round robin load balancer
-- [ ] session stickiness
+- [x] Round robin load balance
+- [x] CIDR range when managing backends
+- [ ] Session stickiness
+- [ ] Logs
 
 ## Installation
 Download:
