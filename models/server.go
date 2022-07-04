@@ -1,11 +1,13 @@
 package models
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
 	"golang.org/x/net/proxy"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -15,6 +17,7 @@ import (
 )
 
 const HTTP200 = "HTTP/1.1 200 Connection Established\r\n\r\n"
+const HTTP407 = "407 Proxy Authentication Required"
 
 type Proxy struct {
 	BackendsFile  string
@@ -27,46 +30,6 @@ type Proxy struct {
 	Mutex         *sync.Mutex
 	Timeout       int
 	IsVerbose     bool
-}
-
-func (p *Proxy) handleHTTP(responseWriter http.ResponseWriter, request *http.Request) {
-	p.setDialer()
-	transport := http.Transport{
-		DialContext: p.Dialer.(interface {
-			DialContext(context context.Context, network, address string) (net.Conn, error)
-		}).DialContext,
-	}
-
-	response, err := transport.RoundTrip(request)
-	if err != nil {
-		return
-	}
-	defer response.Body.Close()
-	copyHeader(responseWriter.Header(), response.Header)
-	responseWriter.WriteHeader(response.StatusCode)
-	_, _ = io.Copy(responseWriter, response.Body)
-}
-
-func (p *Proxy) handleTunnel(responseWriter http.ResponseWriter, request *http.Request) {
-	hijacker, ok := responseWriter.(http.Hijacker)
-	if !ok {
-		return
-	}
-
-	sourceConnection, _, err := hijacker.Hijack()
-	if err != nil {
-		return
-	}
-	_, network := p.setDialer()
-	destinationConnection, err := p.Dialer.Dial(network, request.Host)
-	if err != nil {
-		_ = sourceConnection.Close()
-		return
-	}
-	_, _ = sourceConnection.Write([]byte(HTTP200))
-
-	go copyIO(sourceConnection, destinationConnection)
-	go copyIO(destinationConnection, sourceConnection)
 }
 
 func (p *Proxy) setDialer() (string, string) {
@@ -134,38 +97,78 @@ func (p *Proxy) handleRequest(responseWriter http.ResponseWriter, request *http.
 			p.handleHTTP(responseWriter, request)
 		}
 	} else {
+		p.handleProxyAuthRequired(responseWriter, request)
+
 		if p.IsVerbose == true {
 			log.Println("invalid request")
 		}
 	}
 }
 
-func copyHeader(dest, src http.Header) {
-	for k, vv := range src {
-		for _, v := range vv {
-			dest.Add(k, v)
-		}
+func (p *Proxy) handleHTTP(responseWriter http.ResponseWriter, request *http.Request) {
+	p.setDialer()
+	transport := http.Transport{
+		DialContext: p.Dialer.(interface {
+			DialContext(context context.Context, network, address string) (net.Conn, error)
+		}).DialContext,
 	}
-}
 
-func copyIO(src, dest net.Conn) {
-	defer func(src net.Conn) {
-		err := src.Close()
-		if err != nil {
-			return
-		}
-	}(src)
-
-	defer func(dest net.Conn) {
-		err := dest.Close()
-		if err != nil {
-			return
-		}
-	}(dest)
-
-	_, err := io.Copy(src, dest)
+	response, err := transport.RoundTrip(request)
 	if err != nil {
 		return
+	}
+	defer response.Body.Close()
+	copyHeader(responseWriter.Header(), response.Header)
+	responseWriter.WriteHeader(response.StatusCode)
+	_, _ = io.Copy(responseWriter, response.Body)
+}
+
+func (p *Proxy) handleTunnel(responseWriter http.ResponseWriter, request *http.Request) {
+	hijacker, ok := responseWriter.(http.Hijacker)
+	if !ok {
+		return
+	}
+
+	sourceConnection, _, err := hijacker.Hijack()
+	if err != nil {
+		return
+	}
+	_, network := p.setDialer()
+	destinationConnection, err := p.Dialer.Dial(network, request.Host)
+	if err != nil {
+		_ = sourceConnection.Close()
+		return
+	}
+	_, _ = sourceConnection.Write([]byte(HTTP200))
+
+	go copyIO(sourceConnection, destinationConnection)
+	go copyIO(destinationConnection, sourceConnection)
+}
+
+func (p *Proxy) handleProxyAuthRequired(responseWriter http.ResponseWriter, request *http.Request) {
+	hijacker, ok := responseWriter.(http.Hijacker)
+	if !ok {
+		return
+	}
+
+	authRequiredResponse := &http.Response{
+		StatusCode: 407,
+		ProtoMajor: 1,
+		ProtoMinor: 1,
+		Request:    request,
+		Header: http.Header{
+			"Proxy-Authenticate": []string{"Basic"},
+			"Proxy-Connection":   []string{"close"},
+		},
+		Body:          ioutil.NopCloser(bytes.NewBuffer([]byte(HTTP407))),
+		ContentLength: int64(len(HTTP407)),
+	}
+
+	sourceConnection, _, err := hijacker.Hijack()
+	_ = authRequiredResponse.Write(sourceConnection)
+	_ = sourceConnection.Close()
+	if err != nil {
+		log.Println("Cannot hijack connection " + err.Error())
 	}
 }
 
