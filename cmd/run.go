@@ -58,10 +58,21 @@ var runCmd = &cobra.Command{
 			ListenAddress: listenAddress,
 			Timeout:       timeout,
 			Mutex:         &sync.Mutex{},
+			SessionMutex:  &sync.Mutex{},
+			Sessions:      map[string]string{},
 			Username:      username,
 			Password:      password,
 			IsVerbose:     isVerbose,
 			Whitelist:     whitelist,
+			ExitNodes: struct {
+				All          []models.ExitNode
+				ByRegion     map[string][]models.ExitNode
+				ByInstanceID map[string]models.ExitNode
+			}{
+				All:          []models.ExitNode{},
+				ByRegion:     map[string][]models.ExitNode{},
+				ByInstanceID: map[string]models.ExitNode{},
+			},
 		}
 
 		if managementAddress != "" {

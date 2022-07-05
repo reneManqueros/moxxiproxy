@@ -10,6 +10,21 @@ import (
 	"strings"
 )
 
+func (p *Proxy) GetBackendByRegion(region string) (b string, err error) {
+	if _, ok := p.ExitNodes.ByRegion[region]; ok && len(p.ExitNodes.ByRegion[region]) > 0 {
+		slice := p.ExitNodes.ByRegion[region]
+		p.Mutex.Lock()
+		defer p.Mutex.Unlock()
+		if len(slice) == 0 {
+			err := errors.New("no exitNodes available")
+			return "", err
+		}
+		randomIndex := rand.Intn(len(slice))
+		return slice[randomIndex].Interface, nil
+	}
+	return b, err
+}
+
 func (p *Proxy) GetBackend() (b string, err error) {
 	p.Mutex.Lock()
 	defer p.Mutex.Unlock()
@@ -19,6 +34,18 @@ func (p *Proxy) GetBackend() (b string, err error) {
 	}
 	randomBackendIndex := rand.Intn(len(p.Backends))
 	b = p.Backends[randomBackendIndex]
+	return
+}
+
+func (p *Proxy) GetBackendByInstanceID(id string) (b string, err error) {
+	p.Mutex.Lock()
+	defer p.Mutex.Unlock()
+	if len(p.ExitNodes.ByInstanceID) == 0 {
+		err = errors.New("no exitNodes available")
+		return
+	}
+
+	b = p.ExitNodes.ByInstanceID[id].Interface
 	return
 }
 

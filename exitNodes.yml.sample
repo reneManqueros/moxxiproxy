@@ -1,0 +1,12 @@
+- interface: 0.0.0.0
+  region: us
+  instance_id: us.01
+- interface: 0.0.0.0
+  region: us
+  instance_id: us.02
+- interface: 0.0.0.0
+  region: us
+  instance_id: ca.03
+- interface: 0.0.0.0
+  region: us
+  instance_id: ca.04
