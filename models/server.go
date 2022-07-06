@@ -38,7 +38,7 @@ type Proxy struct {
 	IsVerbose    bool
 }
 
-func (p *Proxy) setDialer(requestContext RequestContext) (string, string) {
+func (p *Proxy) setDialer(requestContext RequestContext) (string, string, proxy.Dialer) {
 	var be string
 	if requestContext.Instance != "" {
 		be, _ = p.GetBackendByInstanceID(requestContext.Instance)
@@ -64,10 +64,6 @@ func (p *Proxy) setDialer(requestContext RequestContext) (string, string) {
 	}
 	addr, _ := net.ResolveTCPAddr(network, fmt.Sprintf("%s:0", be))
 
-	p.Dialer = &net.Dialer{
-		LocalAddr: addr,
-		Timeout:   time.Duration(p.Timeout) * time.Second,
-	}
 	if requestContext.Session != "" {
 		p.SessionMutex.Lock()
 		if _, ok := p.Sessions[requestContext.Session]; !ok {
@@ -75,7 +71,10 @@ func (p *Proxy) setDialer(requestContext RequestContext) (string, string) {
 		}
 		p.SessionMutex.Unlock()
 	}
-	return be, network
+	return be, network, &net.Dialer{
+		LocalAddr: addr,
+		Timeout:   time.Duration(p.Timeout) * time.Second,
+	}
 }
 
 func (p *Proxy) isInWhitelist(requestAddress string) bool {
@@ -154,8 +153,8 @@ func (p *Proxy) handleTunnel(responseWriter http.ResponseWriter, request *http.R
 	if err != nil {
 		return
 	}
-	_, network := p.setDialer(requestContext)
-	destinationConnection, err := p.Dialer.Dial(network, request.Host)
+	_, network, thisDialer := p.setDialer(requestContext)
+	destinationConnection, err := thisDialer.Dial(network, request.Host)
 	if err != nil {
 		_ = sourceConnection.Close()
 		return
