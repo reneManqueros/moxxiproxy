@@ -34,7 +34,16 @@ func copyHeader(dest, src http.Header) {
 }
 
 func copyIO(src, dest net.Conn) {
+	defer func() {
+		if r := recover(); r != nil {
+			err := r.(error)
+			log.Println("UNHANDLED ERROR! :", err)
+		}
+	}()
 	defer func(src net.Conn) {
+		if src == nil {
+			return
+		}
 		err := src.Close()
 		if err != nil {
 			return
@@ -42,12 +51,19 @@ func copyIO(src, dest net.Conn) {
 	}(src)
 
 	defer func(dest net.Conn) {
+		if dest == nil {
+			return
+		}
+
 		err := dest.Close()
 		if err != nil {
 			return
 		}
 	}(dest)
 
+	if src == nil || dest == nil {
+		return
+	}
 	_, err := io.Copy(src, dest)
 	if err != nil {
 		return
