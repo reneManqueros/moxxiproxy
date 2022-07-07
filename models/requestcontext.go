@@ -8,15 +8,20 @@ import (
 )
 
 type RequestContext struct {
+	RawUsername   string
+	UserID        string
 	Region        string
-	Project       string
-	Username      string
+	Project       string // Use on logging
 	Session       string
 	Instance      string
 	Authenticated bool
 }
 
-func (rc *RequestContext) FromRequest(proxy *Proxy, request *http.Request) {
+func (rc *RequestContext) FromRequest(request *http.Request) {
+	if len(UserMap) == 0 {
+		rc.Authenticated = true
+	}
+
 	if value, ok := request.Header["Proxy-Authorization"]; ok && len(value) > 0 {
 		authHeader := value[0]
 		authHeader = strings.TrimPrefix(authHeader, "Basic ")
@@ -25,11 +30,11 @@ func (rc *RequestContext) FromRequest(proxy *Proxy, request *http.Request) {
 			log.Println("error:", err)
 		}
 		if userParts := strings.Split(string(data), ":"); len(userParts) > 1 {
-			userRaw := userParts[0]
-			password := userParts[1]
-			rc.ParseUsername(userRaw)
-
-			if rc.Username == proxy.Username && password == proxy.Password {
+			rc.RawUsername = userParts[0]
+			authToken := userParts[1]
+			rc.ParseUsername(rc.RawUsername)
+			thisUser, userExists := Users{}.ByID(rc.UserID)
+			if userExists == true && thisUser.UserID == rc.UserID && thisUser.AuthToken == authToken {
 				rc.Authenticated = true
 			}
 		}
@@ -41,7 +46,7 @@ func (rc *RequestContext) FromRequest(proxy *Proxy, request *http.Request) {
 func (rc *RequestContext) ParseUsername(userRaw string) {
 	for index, v := range strings.Split(userRaw, "_") {
 		if index == 0 {
-			rc.Username = v
+			rc.UserID = v
 			continue
 		}
 		if kv := strings.Split(v, "-"); len(kv) == 2 {
@@ -56,5 +61,4 @@ func (rc *RequestContext) ParseUsername(userRaw string) {
 			}
 		}
 	}
-	log.Println(rc)
 }
