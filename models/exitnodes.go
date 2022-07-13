@@ -64,8 +64,19 @@ func (ps *ProxyServer) ByRandom() (exitNode ExitNode, err error) {
 		err = errors.New("no exitNodes available")
 		return
 	}
-	randomIndex := rand.Intn(len(ps.ExitNodes.All))
-	exitNode = ps.ExitNodes.All[randomIndex]
+
+	if ps.HideDown == false {
+		randomIndex := rand.Intn(len(ps.ExitNodes.All))
+		exitNode = ps.ExitNodes.All[randomIndex]
+	} else {
+		for i := 0; i < 10; i++ {
+			randomIndex := rand.Intn(len(ps.ExitNodes.All))
+			exitNode = ps.ExitNodes.All[randomIndex]
+			if ServerHealth.IsUp(exitNode) == true {
+				break
+			}
+		}
+	}
 	return
 }
 

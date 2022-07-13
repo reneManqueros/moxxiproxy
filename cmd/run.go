@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 var runCmd = &cobra.Command{
@@ -20,6 +21,7 @@ var runCmd = &cobra.Command{
 		isUpstream := false
 		users := "users.yml"
 		exitNodes := "exitNodes.yml"
+		hideDown := false
 
 		// Overrides
 		for _, v := range args {
@@ -46,7 +48,19 @@ var runCmd = &cobra.Command{
 				if argumentParts[0] == "upstream" && argumentParts[1] == "true" {
 					isUpstream = true
 				}
+				if argumentParts[0] == "hidedown" && argumentParts[1] == "true" {
+					hideDown = true
+				}
 			}
+		}
+		models.ServerHealth.Init()
+		if hideDown == true {
+			go func() {
+				for {
+					time.Sleep(1801 * time.Second)
+					models.ServerHealth.ReviveOld()
+				}
+			}()
 		}
 
 		s := models.ProxyServer{
@@ -68,6 +82,7 @@ var runCmd = &cobra.Command{
 			},
 			IsUpstream:    isUpstream,
 			IsVerbose:     isVerbose,
+			HideDown:      hideDown,
 			ListenAddress: listenAddress,
 			Mutex:         &sync.Mutex{},
 			Sessions:      map[string]models.ExitNode{},

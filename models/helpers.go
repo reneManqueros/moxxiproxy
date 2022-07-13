@@ -1,6 +1,7 @@
 package models
 
 import (
+	"errors"
 	"io"
 	"log"
 	"net"
@@ -33,18 +34,20 @@ func copyHeader(dest, src http.Header) {
 	}
 }
 
-func copyIO(src, dest net.Conn) {
+func copyIO(src, dest net.Conn) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err := r.(error)
+			err = r.(error)
 			log.Println("UNHANDLED ERROR! :", err)
 		}
 	}()
 	defer func(src net.Conn) {
 		if src == nil {
+			err = errors.New("nil connection")
 			return
 		}
-		err := src.Close()
+
+		err = src.Close()
 		if err != nil {
 			return
 		}
@@ -52,20 +55,23 @@ func copyIO(src, dest net.Conn) {
 
 	defer func(dest net.Conn) {
 		if dest == nil {
+			err = errors.New("nil connection")
 			return
 		}
 
-		err := dest.Close()
+		err = dest.Close()
 		if err != nil {
 			return
 		}
 	}(dest)
 
 	if src == nil || dest == nil {
+		err = errors.New("nil connection")
 		return
 	}
-	_, err := io.Copy(src, dest)
+	_, err = io.Copy(src, dest)
 	if err != nil {
 		return
 	}
+	return
 }

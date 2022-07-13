@@ -3,6 +3,7 @@ package models
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"golang.org/x/net/proxy"
 	"io"
@@ -38,6 +39,7 @@ type ProxyServer struct {
 	Timeout    int
 	IsVerbose  bool
 	IsUpstream bool
+	HideDown   bool
 }
 
 func (ps *ProxyServer) GetExitNode(requestContext RequestContext) (ExitNode, string) {
@@ -111,10 +113,15 @@ func (ps *ProxyServer) handleRequest(responseWriter http.ResponseWriter, request
 	if ps.isInWhitelist(request.RemoteAddr) == false {
 		return
 	}
+
 	requestContext := RequestContext{}
 	requestContext.FromRequest(request)
 
 	if requestContext.Authenticated == true {
+		if strings.HasPrefix(request.RequestURI, "/health") == true {
+			ps.handleHealth(responseWriter, request)
+		}
+
 		if request.Method == http.MethodConnect {
 			ps.handleTunnel(responseWriter, request, requestContext)
 		} else {
@@ -158,9 +165,20 @@ func (ps *ProxyServer) handleHTTP(responseWriter http.ResponseWriter, request *h
 }
 
 func (ps *ProxyServer) handleTunnel(responseWriter http.ResponseWriter, request *http.Request, requestContext RequestContext) {
+	defer func() {
+		if r := recover(); r != nil {
+			err := r.(error)
+			log.Println("UNHANDLED ERROR! handleTunnel:", err)
+		}
+	}()
+
+	var err error
+	var exitNode ExitNode
+	defer func() {
+		ServerHealth.SetFromError(exitNode, err)
+	}()
 	exitNode, network, thisDialer := ps.setDialer(requestContext)
 	var destinationConnection net.Conn
-	var err error
 	if ps.IsUpstream == true {
 		transport := http.Transport{
 			DialContext: thisDialer.(interface {
@@ -176,6 +194,7 @@ func (ps *ProxyServer) handleTunnel(responseWriter http.ResponseWriter, request 
 
 	hijacker, ok := responseWriter.(http.Hijacker)
 	if !ok {
+		err = errors.New("hijacker error")
 		return
 	}
 
@@ -187,10 +206,23 @@ func (ps *ProxyServer) handleTunnel(responseWriter http.ResponseWriter, request 
 		_ = sourceConnection.Close()
 		return
 	}
-	_, _ = sourceConnection.Write([]byte(HTTP200))
-
-	go copyIO(sourceConnection, destinationConnection)
-	go copyIO(destinationConnection, sourceConnection)
+	_, err = sourceConnection.Write([]byte(HTTP200))
+	go func() {
+		copyErr := copyIO(sourceConnection, destinationConnection)
+		if copyErr != nil {
+			if strings.Contains(copyErr.Error(), "use of closed network connection") == false {
+				ServerHealth.Set(exitNode, false)
+			}
+		}
+	}()
+	go func() {
+		copyErr := copyIO(destinationConnection, sourceConnection)
+		if copyErr != nil {
+			if strings.Contains(copyErr.Error(), "use of closed network connection") == false {
+				ServerHealth.Set(exitNode, false)
+			}
+		}
+	}()
 }
 
 func (ps *ProxyServer) handleProxyAuthRequired(responseWriter http.ResponseWriter, request *http.Request) {
@@ -220,9 +252,27 @@ func (ps *ProxyServer) handleProxyAuthRequired(responseWriter http.ResponseWrite
 	}
 }
 
+func (ps *ProxyServer) handleHealth(responseWriter http.ResponseWriter, request *http.Request) {
+	var b []byte
+	if strings.HasSuffix(request.RequestURI, "?type=csv") {
+		b, _ = ServerHealth.ToCSV()
+		responseWriter.Header().Set("Content-Type", "text/csv")
+	} else {
+
+		if strings.HasSuffix(request.RequestURI, "?type=html") {
+			responseWriter.Header().Set("Content-Type", "text/html")
+			b, _ = ServerHealth.ToHTML()
+		} else {
+			b, _ = ServerHealth.ToJSON()
+		}
+	}
+	responseWriter.Write(b)
+}
+
 func (ps *ProxyServer) Run() {
 	ps.ExitNodesFromDisk(ps.ConfigFiles.Nodes)
 	Users{}.Load(ps.ConfigFiles.Users)
+
 	err := http.ListenAndServe(ps.ListenAddress, http.HandlerFunc(ps.handleRequest))
 	if err != nil {
 		log.Println(err)
