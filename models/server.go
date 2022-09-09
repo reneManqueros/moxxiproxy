@@ -1,6 +1,7 @@
 package models
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -19,6 +21,7 @@ const HTTP200 = "HTTP/1.1 200 Connection Established\r\n\r\n"
 const HTTP407 = "407 Proxy Authentication Required"
 
 type Proxy struct {
+	IsUpstream    bool
 	BackendsFile  string
 	ListenAddress string
 	Backends      []string
@@ -38,45 +41,48 @@ type Proxy struct {
 	IsVerbose    bool
 }
 
-func (p *Proxy) setDialer(requestContext RequestContext) (string, string, proxy.Dialer) {
-	var be string
+func (p *Proxy) GetExitNode(requestContext RequestContext) (ExitNode, string) {
+	var exitNode ExitNode
 	if requestContext.Instance != "" {
-		be, _ = p.GetBackendByInstanceID(requestContext.Instance)
-	} else if requestContext.Session != "" {
-		p.SessionMutex.Lock()
-		// ToDo: validate backend/exitnode still exists
-		if val, ok := p.Sessions[requestContext.Session]; ok {
-			be = val
-		}
-		p.SessionMutex.Unlock()
+		exitNode, _ = p.ByInstanceID(requestContext.Instance)
 	} else if requestContext.Region != "" {
-		be, _ = p.GetBackendByRegion(requestContext.Region)
+		exitNode, _ = p.ByRegion(requestContext.Region)
 	}
 
 	// get one at random (default) or if the others failed
-	if be == "" {
-		be, _ = p.GetBackend()
+	if exitNode.Interface == "" && exitNode.Upstream == "" {
+		exitNode, _ = p.ByRandom()
 	}
+	backend := exitNode.Interface
+	if p.IsUpstream == true {
+		backend = exitNode.Upstream
+	}
+
+	return exitNode, backend
+}
+
+func (p *Proxy) setDialer(requestContext RequestContext, isClearText bool) (ExitNode, string, proxy.Dialer) {
+	exitNode, backend := p.GetExitNode(requestContext)
 
 	network := "tcp4"
-	if strings.Contains(be, ":") && len(be) > 15 {
-		network = "tcp6"
-	}
-	addr, _ := net.ResolveTCPAddr(network, fmt.Sprintf("%s:0", be))
+	// ToDo: implement this in a cleaner way
+	//if strings.Contains(backend, ":") && len(backend) > 15 && ps.IsUpstream == false {
+	//	network = "tcp6"
+	//}
 
-	if requestContext.Session != "" {
-		p.SessionMutex.Lock()
-		if _, ok := p.Sessions[requestContext.Session]; !ok {
-			p.Sessions[requestContext.Session] = be
-		}
-		p.SessionMutex.Unlock()
+	format := `%s:0`
+	if p.IsUpstream && isClearText == false {
+		format = `%s`
 	}
-	return be, network, &net.Dialer{
+	addr, _ := net.ResolveTCPAddr(network, fmt.Sprintf(format, backend))
+
+	thisDialer := &net.Dialer{
 		LocalAddr: addr,
 		Timeout:   time.Duration(p.Timeout) * time.Second,
 	}
-}
 
+	return exitNode, network, thisDialer
+}
 func (p *Proxy) isInWhitelist(requestAddress string) bool {
 	if p.Whitelist == "" {
 		return true
@@ -126,13 +132,17 @@ func (p *Proxy) handleRequest(responseWriter http.ResponseWriter, request *http.
 }
 
 func (p *Proxy) handleHTTP(responseWriter http.ResponseWriter, request *http.Request, requestContext RequestContext) {
-	p.setDialer(requestContext)
+	exitNode, _, thisDialer := p.setDialer(requestContext, true)
 	transport := http.Transport{
-		DialContext: p.Dialer.(interface {
+		DialContext: thisDialer.(interface {
 			DialContext(context context.Context, network, address string) (net.Conn, error)
 		}).DialContext,
 	}
 
+	if p.IsUpstream {
+		u, _ := url.Parse(exitNode.Upstream)
+		transport.Proxy = http.ProxyURL(u)
+	}
 	response, err := transport.RoundTrip(request)
 	if err != nil {
 		return
@@ -143,7 +153,43 @@ func (p *Proxy) handleHTTP(responseWriter http.ResponseWriter, request *http.Req
 	_, _ = io.Copy(responseWriter, response.Body)
 }
 
+func (p *Proxy) getUpstream(upstream string, addr string) (net.Conn, error) {
+	network := "tcp"
+
+	connectReq := &http.Request{
+		Method: "CONNECT",
+		URL:    &url.URL{Opaque: addr},
+		Host:   addr,
+		Header: make(http.Header),
+	}
+
+	c, err := net.DialTimeout(network, upstream, time.Duration(10)*time.Second)
+	if err != nil {
+		return nil, err
+	}
+	connectReq.Write(c)
+	br := bufio.NewReader(c)
+	resp, err := http.ReadResponse(br, connectReq)
+	if err != nil {
+		c.Close()
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	return c, nil
+}
+
 func (p *Proxy) handleTunnel(responseWriter http.ResponseWriter, request *http.Request, requestContext RequestContext) {
+	var destinationConnection net.Conn
+	var err error
+	exitNode, network, thisDialer := p.setDialer(requestContext, false)
+
+	if p.IsUpstream == true {
+		destinationConnection, err = p.getUpstream(exitNode.Upstream, request.Host)
+	} else {
+		destinationConnection, err = thisDialer.Dial(network, request.Host)
+	}
+
 	hijacker, ok := responseWriter.(http.Hijacker)
 	if !ok {
 		return
@@ -153,8 +199,7 @@ func (p *Proxy) handleTunnel(responseWriter http.ResponseWriter, request *http.R
 	if err != nil {
 		return
 	}
-	_, network, thisDialer := p.setDialer(requestContext)
-	destinationConnection, err := thisDialer.Dial(network, request.Host)
+
 	if err != nil {
 		_ = sourceConnection.Close()
 		return

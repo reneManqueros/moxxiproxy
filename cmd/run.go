@@ -21,7 +21,7 @@ var runCmd = &cobra.Command{
 		password := ""
 		timeout := 0
 		whitelist := ""
-
+		isUpstream := false
 		// Overrides
 		for _, v := range args {
 			argumentParts := strings.Split(v, "=")
@@ -50,6 +50,9 @@ var runCmd = &cobra.Command{
 				if argumentParts[0] == "verbose" && argumentParts[1] == "true" {
 					isVerbose = true
 				}
+				if argumentParts[0] == "upstream" && argumentParts[1] == "true" {
+					isUpstream = true
+				}
 			}
 		}
 
@@ -64,6 +67,7 @@ var runCmd = &cobra.Command{
 			Password:      password,
 			IsVerbose:     isVerbose,
 			Whitelist:     whitelist,
+			IsUpstream:    isUpstream,
 			ExitNodes: struct {
 				All          []models.ExitNode
 				ByRegion     map[string][]models.ExitNode

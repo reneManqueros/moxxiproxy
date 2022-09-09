@@ -56,5 +56,4 @@ func (rc *RequestContext) ParseUsername(userRaw string) {
 			}
 		}
 	}
-	log.Println(rc)
 }
