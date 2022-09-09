@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 )
 
 var runCmd = &cobra.Command{
@@ -15,14 +14,14 @@ var runCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// Defaults
 		listenAddress := "0.0.0.0:1989"
+		managementAddress := ":33333"
+		backendsFile := "./backends.yml"
 		isVerbose := false
+		username := ""
+		password := ""
 		timeout := 0
 		whitelist := ""
 		isUpstream := false
-		users := "users.yml"
-		exitNodes := "exitNodes.yml"
-		hideDown := false
-
 		// Overrides
 		for _, v := range args {
 			argumentParts := strings.Split(v, "=")
@@ -30,14 +29,20 @@ var runCmd = &cobra.Command{
 				if argumentParts[0] == "address" {
 					listenAddress = argumentParts[1]
 				}
+				if argumentParts[0] == "management" {
+					managementAddress = argumentParts[1]
+				}
+				if argumentParts[0] == "backends" {
+					backendsFile = argumentParts[1]
+				}
 				if argumentParts[0] == "timeout" {
 					timeout, _ = strconv.Atoi(argumentParts[1])
 				}
-				if argumentParts[0] == "users" {
-					users = argumentParts[1]
-				}
-				if argumentParts[0] == "exitNodes" {
-					exitNodes = argumentParts[1]
+				if argumentParts[0] == "auth" {
+					if authParts := strings.Split(argumentParts[1], ":"); len(authParts) > 1 {
+						username = authParts[0]
+						password = authParts[1]
+					}
 				}
 				if argumentParts[0] == "whitelist" {
 					whitelist = argumentParts[1]
@@ -48,29 +53,21 @@ var runCmd = &cobra.Command{
 				if argumentParts[0] == "upstream" && argumentParts[1] == "true" {
 					isUpstream = true
 				}
-				if argumentParts[0] == "hidedown" && argumentParts[1] == "true" {
-					hideDown = true
-				}
 			}
 		}
-		models.ServerHealth.Init()
-		if hideDown == true {
-			go func() {
-				for {
-					time.Sleep(1801 * time.Second)
-					models.ServerHealth.ReviveOld()
-				}
-			}()
-		}
 
-		s := models.ProxyServer{
-			ConfigFiles: struct {
-				Users string
-				Nodes string
-			}{
-				Users: users,
-				Nodes: exitNodes,
-			},
+		s := models.Proxy{
+			BackendsFile:  backendsFile,
+			ListenAddress: listenAddress,
+			Timeout:       timeout,
+			Mutex:         &sync.Mutex{},
+			SessionMutex:  &sync.Mutex{},
+			Sessions:      map[string]string{},
+			Username:      username,
+			Password:      password,
+			IsVerbose:     isVerbose,
+			Whitelist:     whitelist,
+			IsUpstream:    isUpstream,
 			ExitNodes: struct {
 				All          []models.ExitNode
 				ByRegion     map[string][]models.ExitNode
@@ -80,15 +77,13 @@ var runCmd = &cobra.Command{
 				ByRegion:     map[string][]models.ExitNode{},
 				ByInstanceID: map[string]models.ExitNode{},
 			},
-			IsUpstream:    isUpstream,
-			IsVerbose:     isVerbose,
-			HideDown:      hideDown,
-			ListenAddress: listenAddress,
-			Mutex:         &sync.Mutex{},
-			Sessions:      map[string]models.ExitNode{},
-			SessionMutex:  &sync.Mutex{},
-			Timeout:       timeout,
-			Whitelist:     whitelist,
+		}
+
+		if managementAddress != "" {
+			go models.Management{
+				ListenAddress: managementAddress,
+				Server:        &s,
+			}.Listen()
 		}
 
 		s.Run()

@@ -16,36 +16,38 @@ type ExitNode struct {
 	Upstream   string `yaml:"upstream"`
 }
 
-func (ps *ProxyServer) ExitNodesFromDisk(filename string) {
-	if _, err := os.Stat(filename); errors.Is(err, os.ErrNotExist) {
+func (p *Proxy) ExitNodesFromDisk() {
+	if _, err := os.Stat("exitNodes.yml"); errors.Is(err, os.ErrNotExist) {
 		log.Println("no exitNodes file, creating blank")
-		_, err = os.Create(filename)
+		_, err = os.Create("exitNodes.yml")
 		if err != nil {
 			log.Fatalln("couldnt create exitNodes file")
 		}
 		return
 	}
 
-	b, err := ioutil.ReadFile(filename)
+	b, err := ioutil.ReadFile("exitNodes.yml")
 	if err != nil {
 		log.Fatalln("error loading exitNodes file", err)
 		return
 	}
 	var exitNodes []ExitNode
 	_ = yaml.Unmarshal(b, &exitNodes)
-	ps.ExitNodes.All = exitNodes
+	p.Mutex.Lock()
+	defer p.Mutex.Unlock()
+	p.ExitNodes.All = exitNodes
 	for _, v := range exitNodes {
-		ps.ExitNodes.ByRegion[v.Region] = append(ps.ExitNodes.ByRegion[v.Region], v)
-		ps.ExitNodes.ByInstanceID[v.InstanceID] = v
+		p.ExitNodes.ByRegion[v.Region] = append(p.ExitNodes.ByRegion[v.Region], v)
+		p.ExitNodes.ByInstanceID[v.InstanceID] = v
 	}
 }
 
-func (ps *ProxyServer) ByRegion(region string) (ExitNode, error) {
+func (p *Proxy) ByRegion(region string) (ExitNode, error) {
 	var err error
-	if _, ok := ps.ExitNodes.ByRegion[region]; ok && len(ps.ExitNodes.ByRegion[region]) > 0 {
-		slice := ps.ExitNodes.ByRegion[region]
-		ps.Mutex.Lock()
-		defer ps.Mutex.Unlock()
+	if _, ok := p.ExitNodes.ByRegion[region]; ok && len(p.ExitNodes.ByRegion[region]) > 0 {
+		slice := p.ExitNodes.ByRegion[region]
+		p.Mutex.Lock()
+		defer p.Mutex.Unlock()
 		if len(slice) >= 0 {
 
 			randomIndex := rand.Intn(len(slice))
@@ -57,37 +59,28 @@ func (ps *ProxyServer) ByRegion(region string) (ExitNode, error) {
 	return ExitNode{}, err
 }
 
-func (ps *ProxyServer) ByRandom() (exitNode ExitNode, err error) {
-	ps.Mutex.Lock()
-	defer ps.Mutex.Unlock()
-	if len(ps.ExitNodes.All) == 0 {
+func (p *Proxy) ByRandom() (exitNode ExitNode, err error) {
+	p.Mutex.Lock()
+	defer p.Mutex.Unlock()
+	if len(p.ExitNodes.All) == 0 {
 		err = errors.New("no exitNodes available")
 		return
 	}
 
-	if ps.HideDown == false {
-		randomIndex := rand.Intn(len(ps.ExitNodes.All))
-		exitNode = ps.ExitNodes.All[randomIndex]
-	} else {
-		for i := 0; i < 10; i++ {
-			randomIndex := rand.Intn(len(ps.ExitNodes.All))
-			exitNode = ps.ExitNodes.All[randomIndex]
-			if ServerHealth.IsUp(exitNode) == true {
-				break
-			}
-		}
-	}
+	randomIndex := rand.Intn(len(p.ExitNodes.All))
+	exitNode = p.ExitNodes.All[randomIndex]
+
 	return
 }
 
-func (ps *ProxyServer) ByInstanceID(id string) (exitNode ExitNode, err error) {
-	ps.Mutex.Lock()
-	defer ps.Mutex.Unlock()
-	if len(ps.ExitNodes.ByInstanceID) == 0 {
+func (p *Proxy) ByInstanceID(id string) (exitNode ExitNode, err error) {
+	p.Mutex.Lock()
+	defer p.Mutex.Unlock()
+	if len(p.ExitNodes.ByInstanceID) == 0 {
 		err = errors.New("no exitNodes available")
 		return
 	}
 
-	exitNode = ps.ExitNodes.ByInstanceID[id]
+	exitNode = p.ExitNodes.ByInstanceID[id]
 	return
 }
