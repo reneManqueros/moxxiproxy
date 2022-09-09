@@ -110,7 +110,7 @@ func (p *Proxy) handleRequest(responseWriter http.ResponseWriter, request *http.
 	}
 
 	if passedAuthentication == false {
-		requestContext.FromRequest(p, request)
+		requestContext.FromRequest(request)
 		if requestContext.Authenticated == true {
 			passedAuthentication = true
 		}
@@ -239,7 +239,6 @@ func (p *Proxy) handleProxyAuthRequired(responseWriter http.ResponseWriter, requ
 
 func (p *Proxy) Run() {
 	p.ExitNodesFromDisk()
-	p.getBackends()
 	err := http.ListenAndServe(p.ListenAddress, http.HandlerFunc(p.handleRequest))
 	if err != nil {
 		log.Println(err)

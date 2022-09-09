@@ -14,7 +14,6 @@ var runCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// Defaults
 		listenAddress := "0.0.0.0:1989"
-		managementAddress := ":33333"
 		backendsFile := "./backends.yml"
 		isVerbose := false
 		username := ""
@@ -29,9 +28,7 @@ var runCmd = &cobra.Command{
 				if argumentParts[0] == "address" {
 					listenAddress = argumentParts[1]
 				}
-				if argumentParts[0] == "management" {
-					managementAddress = argumentParts[1]
-				}
+
 				if argumentParts[0] == "backends" {
 					backendsFile = argumentParts[1]
 				}
@@ -77,13 +74,6 @@ var runCmd = &cobra.Command{
 				ByRegion:     map[string][]models.ExitNode{},
 				ByInstanceID: map[string]models.ExitNode{},
 			},
-		}
-
-		if managementAddress != "" {
-			go models.Management{
-				ListenAddress: managementAddress,
-				Server:        &s,
-			}.Listen()
 		}
 
 		s.Run()
