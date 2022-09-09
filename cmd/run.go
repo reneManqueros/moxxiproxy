@@ -14,7 +14,7 @@ var runCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// Defaults
 		listenAddress := "0.0.0.0:1989"
-		backendsFile := "./backends.yml"
+		exitnodesFile := "./exitnodes.yml"
 		isVerbose := false
 		username := ""
 		password := ""
@@ -29,8 +29,8 @@ var runCmd = &cobra.Command{
 					listenAddress = argumentParts[1]
 				}
 
-				if argumentParts[0] == "backends" {
-					backendsFile = argumentParts[1]
+				if argumentParts[0] == "exitnodes" {
+					exitnodesFile = argumentParts[1]
 				}
 				if argumentParts[0] == "timeout" {
 					timeout, _ = strconv.Atoi(argumentParts[1])
@@ -54,7 +54,7 @@ var runCmd = &cobra.Command{
 		}
 
 		s := models.Proxy{
-			BackendsFile:  backendsFile,
+			ExitNodesFile: exitnodesFile,
 			ListenAddress: listenAddress,
 			Timeout:       timeout,
 			Mutex:         &sync.Mutex{},

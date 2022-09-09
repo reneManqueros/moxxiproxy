@@ -17,16 +17,11 @@ type ExitNode struct {
 }
 
 func (p *Proxy) ExitNodesFromDisk() {
-	if _, err := os.Stat("exitNodes.yml"); errors.Is(err, os.ErrNotExist) {
-		log.Println("no exitNodes file, creating blank")
-		_, err = os.Create("exitNodes.yml")
-		if err != nil {
-			log.Fatalln("couldnt create exitNodes file")
-		}
-		return
+	if _, err := os.Stat(p.ExitNodesFile); errors.Is(err, os.ErrNotExist) {
+		log.Fatalln("no exitNodes file")
 	}
 
-	b, err := ioutil.ReadFile("exitNodes.yml")
+	b, err := ioutil.ReadFile(p.ExitNodesFile)
 	if err != nil {
 		log.Fatalln("error loading exitNodes file", err)
 		return

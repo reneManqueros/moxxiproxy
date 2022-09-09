@@ -22,7 +22,7 @@ const HTTP407 = "407 Proxy Authentication Required"
 
 type Proxy struct {
 	IsUpstream    bool
-	BackendsFile  string
+	ExitNodesFile string
 	ListenAddress string
 	Backends      []string
 	Sessions      map[string]string
