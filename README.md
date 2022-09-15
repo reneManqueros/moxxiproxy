@@ -3,26 +3,24 @@
 #### The proxy desc
 
 ## Features 
-- [x] Maps to network interfaces
-- [x] Hot swap of backends
-- [x] Low resource footprint
-- [x] Telnet management console
+- [x] Maps to network interfaces 
+- [x] Low resource footprint 
 - [x] Basic Authentication
 - [x] Client whitelist 
-- [x] Round robin load balance
-- [x] CIDR range when managing backends
+- [x] Random load balance selection
 - [ ] Session stickiness
 - [ ] Logs
-
+- [ ] Group backends by regions
+- 
 ## Installation
-Download:
+Download binary:
 ```shell
-git clone https://github.com/reneManqueros/moxxiproxy
+wget https://github.com/reneManqueros/moxxiproxy/releases/download/v1.2.2/moxxiproxy_1.2.2_Linux_x86_64.tar.gz && tar xf moxxiproxy_1.2.1_Linux_x86_64.tar.gz 
 ```
 
-Compile:
+Download source and compile:
 ```shell
-cd moxxiproxy && go build .
+git clone https://github.com/reneManqueros/moxxiproxy.git && cd moxxiproxy && go build .
 ````
 
 ## Usage
@@ -31,67 +29,42 @@ Execute as proxy server:
 ```shell
 ./moxxiproxy run
 ```
-
-Add a backend:
-```shell
-./moxxiproxy add 127.0.0.1:8080
-```
-
-Add a backend via telnet - Send a "+" and the address:
-```shell
-telnet 127.0.0.1 33333
-+127.0.0.1:8080
-```
-
-Remove a backend:
-```shell
-./moxxiproxy add 127.0.0.1:8080
-```
-
-Remove a backend via telnet - Send a "-" and the address:
-```shell
-telnet 127.0.0.1 33333
--127.0.0.1:8080
-```
-
+ 
 ## Parameters
 
 ### When running as a server
 Change listen address (default: 1989)
 ```shell
-./moxxiproxy run address=:9090
-```
-Disable management console
-```shell
-./moxxiproxy run management=""
+./moxxiproxy run --address=:9090
 ```
 
-Backends file location (default: ./backends.yml)
+ExitNodes file location (default: ./exitnodes.yml)
 ```shell
-./moxxiproxy run backends="/etc/moxxiproxy/backends.yml"
+./moxxiproxy run --exitnodes=./exitNodes.yml
 ```
 
 Enable verbose mode (default: false)
 ```shell
-./moxxiproxy run verbose=true
+./moxxiproxy run --verbose=true
 ```
 
 Connection timeout in seconds (default: 0)
 ```shell
-./moxxiproxy run timeout=10
+./moxxiproxy run --timeout=10
 ```
 
-Whitelist (default: none), comma separated values, can be only the prefix, if a value is passed, it will block everything not on the list
+Whitelist (default: empty), comma separated values, can be only the prefix, if a value is passed, it will block everything not on the list
 ```shell
-./moxxiproxy run whitelist=127.0,10.42.0.1 
+./moxxiproxy run --whitelist=127.0,10.42.0.1 
 ```
 
-Set basic auth credentials (default: disabled)
+Set basic auth credentials (default: empty)
 ```shell
-./moxxiproxy run auth=username:password
+./moxxiproxy run --auth=username:password
 ```
- 
-Change management console host/port
+
+Enable upstream mode (default: false)
 ```shell
-./moxxiproxy run management="127.0.0.1:12345"
+./moxxiproxy run --upstream=true
 ```
+  
