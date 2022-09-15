@@ -15,7 +15,7 @@
 ## Installation
 Download binary:
 ```shell
-wget https://github.com/reneManqueros/moxxiproxy/releases/download/v1.2.2/moxxiproxy_1.2.2_Linux_x86_64.tar.gz && tar xf moxxiproxy_1.2.2_Linux_x86_64.tar.gz 
+wget https://github.com/reneManqueros/moxxiproxy/releases/download/v1.2.3/moxxiproxy_1.2.3_Linux_x86_64.tar.gz && tar xf moxxiproxy_1.2.3_Linux_x86_64.tar.gz 
 ```
 
 Download source and compile:

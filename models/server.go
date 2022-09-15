@@ -140,7 +140,7 @@ func (p *Proxy) handleHTTP(responseWriter http.ResponseWriter, request *http.Req
 	}
 
 	if p.IsUpstream {
-		u, _ := url.Parse(exitNode.Upstream)
+		u, _ := url.Parse("http://" + exitNode.Upstream)
 		transport.Proxy = http.ProxyURL(u)
 	}
 	response, err := transport.RoundTrip(request)

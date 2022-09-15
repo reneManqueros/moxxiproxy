@@ -54,7 +54,7 @@ var runCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(runCmd)
-	runCmd.PersistentFlags().String("address", "0.0.0.0:1989", "--address=1989")
+	runCmd.PersistentFlags().String("address", "0.0.0.0:1989", "--address=:1989")
 	runCmd.PersistentFlags().String("exitnodes", "./exitNodes.yml", "--exitnodes=./exitnodes.yml")
 	runCmd.PersistentFlags().String("auth", "", "--auth=user:pass")
 	runCmd.PersistentFlags().String("whitelist", "", "--whitelist=1.2.3.4,5.6.7.8")
