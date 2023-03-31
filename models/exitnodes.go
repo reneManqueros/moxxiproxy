@@ -49,7 +49,6 @@ func (p *Proxy) ByRegion(region string) (ExitNode, error) {
 			return slice[randomIndex], nil
 		}
 		err = errors.New("no exitNodes available")
-
 	}
 	return ExitNode{}, err
 }

@@ -24,6 +24,11 @@ var runCmd = &cobra.Command{
 		if authParts := strings.Split(auth, ":"); len(authParts) > 1 {
 			username = authParts[0]
 			password = authParts[1]
+			models.UserMap = make(map[string]models.User)
+			models.UserMap[username] = models.User{
+				UserID:    username,
+				AuthToken: password,
+			}
 		}
 
 		s := models.Proxy{
