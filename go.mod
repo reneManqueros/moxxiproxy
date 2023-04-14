@@ -3,8 +3,8 @@ module moxxiproxy
 go 1.18
 
 require (
-	github.com/spf13/cobra v1.6.1
-	golang.org/x/net v0.8.0
+	github.com/spf13/cobra v1.7.0
+	golang.org/x/net v0.9.0
 )
 
 require (
