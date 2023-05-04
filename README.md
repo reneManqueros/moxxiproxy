@@ -8,14 +8,14 @@
 - [x] Basic Authentication
 - [x] Client whitelist 
 - [x] Random load balance selection
-- [ ] Session stickiness
-- [ ] Logs
+- [x] Session stickiness
 - [x] Group backends by regions
+- [ ] Logs
 
 ## Installation
 Download binary:
 ```shell
-wget https://github.com/reneManqueros/moxxiproxy/releases/download/v1.2.7/moxxiproxy_1.2.7_Linux_x86_64.tar.gz && tar xf moxxiproxy_1.2.7_Linux_x86_64.tar.gz 
+wget https://github.com/reneManqueros/moxxiproxy/releases/download/v1.2.8/moxxiproxy_1.2.8_Linux_x86_64.tar.gz && tar xf moxxiproxy_1.2.8_Linux_x86_64.tar.gz 
 ```
 
 Download source and compile:

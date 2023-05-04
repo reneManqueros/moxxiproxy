@@ -25,7 +25,7 @@ type Proxy struct {
 	ExitNodesFile string
 	ListenAddress string
 	Backends      []string
-	Sessions      map[string]string
+	Sessions      map[string]ExitNode
 	ExitNodes     struct {
 		All          []ExitNode
 		ByRegion     map[string][]ExitNode
@@ -47,6 +47,8 @@ func (p *Proxy) GetExitNode(requestContext RequestContext) (ExitNode, string) {
 		exitNode, _ = p.ByInstanceID(requestContext.Instance)
 	} else if requestContext.Region != "" {
 		exitNode, _ = p.ByRegion(requestContext.Region)
+	} else if requestContext.Session != "" {
+		exitNode, _ = p.BySession(requestContext.UserID, requestContext.Session)
 	}
 
 	// get one at random (default) or if the others failed

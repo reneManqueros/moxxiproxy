@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"fmt"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
@@ -49,6 +50,18 @@ func (p *Proxy) ByRegion(region string) (ExitNode, error) {
 			return slice[randomIndex], nil
 		}
 		err = errors.New("no exitNodes available")
+	}
+	return ExitNode{}, err
+}
+func (p *Proxy) BySession(userID string, session string) (ExitNode, error) {
+	var err error
+	sessionKey := fmt.Sprintf(`%s-%s`, userID, session)
+	if exitNode, ok := p.Sessions[sessionKey]; ok == true {
+		return exitNode, nil
+	}
+	if exitNode, err := p.ByRandom(); err == nil {
+		p.Sessions[sessionKey] = exitNode
+		return exitNode, nil
 	}
 	return ExitNode{}, err
 }

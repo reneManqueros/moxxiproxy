@@ -37,7 +37,7 @@ var runCmd = &cobra.Command{
 			Timeout:       timeout,
 			Mutex:         &sync.Mutex{},
 			SessionMutex:  &sync.Mutex{},
-			Sessions:      map[string]string{},
+			Sessions:      map[string]models.ExitNode{},
 			Username:      username,
 			Password:      password,
 			IsVerbose:     isVerbose,
