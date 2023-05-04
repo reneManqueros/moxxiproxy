@@ -1,5 +1,2 @@
-buildprod:
+build:
 	go build -ldflags "-w -s" .
-
-builddev:
-	go build .
