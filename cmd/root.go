@@ -1,9 +1,8 @@
 package cmd
 
 import (
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"log"
-	"os"
 )
 
 var rootCmd = &cobra.Command{
@@ -13,7 +12,6 @@ var rootCmd = &cobra.Command{
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		log.Println(err)
-		os.Exit(1)
+		log.Fatal().Err(err).Msg("root execute")
 	}
 }

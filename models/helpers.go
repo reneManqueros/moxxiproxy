@@ -2,29 +2,11 @@ package models
 
 import (
 	"errors"
+	"github.com/rs/zerolog/log"
 	"io"
-	"log"
 	"net"
 	"net/http"
-	"net/netip"
 )
-
-func ExpandCIDRRange(cidrRange string) (ips []string, err error) {
-	prefix, err := netip.ParsePrefix(cidrRange)
-	if err != nil {
-		log.Println(err)
-	}
-
-	for addr := prefix.Addr(); prefix.Contains(addr); addr = addr.Next() {
-		ips = append(ips, addr.String())
-	}
-
-	if len(ips) < 2 {
-		return ips, nil
-	}
-
-	return ips[1 : len(ips)-1], nil
-}
 
 func copyHeader(dest, src http.Header) {
 	for k, vv := range src {
@@ -38,7 +20,7 @@ func copyIO(src, dest net.Conn) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = r.(error)
-			log.Println("UNHANDLED ERROR! :", err)
+			log.Err(err).Str("method", "copyIO").Msg("UNHANDLED ERROR!")
 		}
 	}()
 	defer func(src net.Conn) {

@@ -5,10 +5,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/net/proxy"
 	"io"
-	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -38,7 +37,6 @@ type Proxy struct {
 	Dialer       proxy.Dialer
 	Mutex        *sync.Mutex
 	Timeout      int
-	IsVerbose    bool
 }
 
 func (p *Proxy) GetExitNode(requestContext RequestContext) (ExitNode, string) {
@@ -59,7 +57,13 @@ func (p *Proxy) GetExitNode(requestContext RequestContext) (ExitNode, string) {
 	if p.IsUpstream == true {
 		backend = exitNode.Upstream
 	}
-
+	log.Trace().
+		Str("exitNode", backend).
+		Str("userID", requestContext.UserID).
+		Str("session", requestContext.Session).
+		Str("region", requestContext.Region).
+		Bool("upstream", p.IsUpstream).
+		Msg("ExitNode selected")
 	return exitNode, backend
 }
 
@@ -126,10 +130,7 @@ func (p *Proxy) handleRequest(responseWriter http.ResponseWriter, request *http.
 		}
 	} else {
 		p.handleProxyAuthRequired(responseWriter, request)
-
-		if p.IsVerbose == true {
-			log.Println("invalid request")
-		}
+		log.Warn().Msg("authentication required")
 	}
 }
 
@@ -227,7 +228,7 @@ func (p *Proxy) handleProxyAuthRequired(responseWriter http.ResponseWriter, requ
 			"Proxy-Authenticate": []string{"Basic"},
 			"Proxy-Connection":   []string{"close"},
 		},
-		Body:          ioutil.NopCloser(bytes.NewBuffer([]byte(HTTP407))),
+		Body:          io.NopCloser(bytes.NewBuffer([]byte(HTTP407))),
 		ContentLength: int64(len(HTTP407)),
 	}
 
@@ -235,7 +236,7 @@ func (p *Proxy) handleProxyAuthRequired(responseWriter http.ResponseWriter, requ
 	_ = authRequiredResponse.Write(sourceConnection)
 	_ = sourceConnection.Close()
 	if err != nil {
-		log.Println("Cannot hijack connection " + err.Error())
+		log.Err(err).Msg("Cannot hijack connection")
 	}
 }
 
@@ -243,6 +244,6 @@ func (p *Proxy) Run() {
 	p.ExitNodesFromDisk()
 	err := http.ListenAndServe(p.ListenAddress, http.HandlerFunc(p.handleRequest))
 	if err != nil {
-		log.Println(err)
+		log.Fatal().Err(err).Msg("ListenAndServe")
 	}
 }

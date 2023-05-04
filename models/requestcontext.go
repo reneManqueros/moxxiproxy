@@ -2,8 +2,9 @@ package models
 
 import (
 	"encoding/base64"
-	"log"
+	"github.com/rs/zerolog/log"
 	"net/http"
+
 	"strings"
 )
 
@@ -27,7 +28,7 @@ func (rc *RequestContext) FromRequest(request *http.Request) {
 		authHeader = strings.TrimPrefix(authHeader, "Basic ")
 		data, err := base64.StdEncoding.DecodeString(authHeader)
 		if err != nil {
-			log.Println("error:", err)
+			log.Err(err).Str("method", "FromRequest").Msg("decoding auth header")
 		}
 		if userParts := strings.Split(string(data), ":"); len(userParts) > 1 {
 			rc.RawUsername = userParts[0]

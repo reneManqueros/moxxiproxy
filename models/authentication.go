@@ -1,9 +1,9 @@
 package models
 
 import (
+	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v2"
-	"io/ioutil"
-	"log"
+	"os"
 )
 
 type User struct {
@@ -16,15 +16,15 @@ type Users struct{}
 var UserMap map[string]User
 
 func (u Users) Load(filename string) {
-	data, err := ioutil.ReadFile(filename)
+	data, err := os.ReadFile(filename)
 	if err != nil {
-		log.Println(err)
+		log.Err(err).Str("filename", filename).Msg("Users.Load")
 		return
 	}
 
 	err = yaml.Unmarshal(data, &UserMap)
 	if err != nil {
-		log.Println(err)
+		log.Err(err).Str("filename", filename).Msg("Users.Load.Unmarshall")
 	}
 }
 

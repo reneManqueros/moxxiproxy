@@ -3,9 +3,8 @@ package models
 import (
 	"errors"
 	"fmt"
+	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v2"
-	"io/ioutil"
-	"log"
 	"math/rand"
 	"os"
 )
@@ -19,16 +18,18 @@ type ExitNode struct {
 
 func (p *Proxy) ExitNodesFromDisk() {
 	if _, err := os.Stat(p.ExitNodesFile); errors.Is(err, os.ErrNotExist) {
-		log.Fatalln("no exitNodes file")
+		log.Fatal().Err(err).Str("method", "ExitNodesFromDisk").Msg("no exitNodes file")
 	}
 
-	b, err := ioutil.ReadFile(p.ExitNodesFile)
+	b, err := os.ReadFile(p.ExitNodesFile)
 	if err != nil {
-		log.Fatalln("error loading exitNodes file", err)
-		return
+		log.Fatal().Err(err).Str("method", "ExitNodesFromDisk").Msg("loading exitNodes file")
 	}
 	var exitNodes []ExitNode
-	_ = yaml.Unmarshal(b, &exitNodes)
+	if err = yaml.Unmarshal(b, &exitNodes); err != nil {
+		log.Fatal().Err(err).Msg("can't parse exitNodes file")
+	}
+
 	p.Mutex.Lock()
 	defer p.Mutex.Unlock()
 	p.ExitNodes.All = exitNodes
@@ -45,7 +46,6 @@ func (p *Proxy) ByRegion(region string) (ExitNode, error) {
 		p.Mutex.Lock()
 		defer p.Mutex.Unlock()
 		if len(slice) >= 0 {
-
 			randomIndex := rand.Intn(len(slice))
 			return slice[randomIndex], nil
 		}
@@ -53,6 +53,7 @@ func (p *Proxy) ByRegion(region string) (ExitNode, error) {
 	}
 	return ExitNode{}, err
 }
+
 func (p *Proxy) BySession(userID string, session string) (ExitNode, error) {
 	var err error
 	sessionKey := fmt.Sprintf(`%s-%s`, userID, session)

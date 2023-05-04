@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"moxxiproxy/models"
+	"os"
 	"strings"
 	"sync"
 )
@@ -15,9 +18,21 @@ var runCmd = &cobra.Command{
 		exitnodesFile, _ := cmd.Flags().GetString("exitnodes")
 		whitelist, _ := cmd.Flags().GetString("whitelist")
 		auth, _ := cmd.Flags().GetString("auth")
+		loglevel, _ := cmd.Flags().GetString("loglevel")
 		timeout, _ := cmd.Flags().GetInt("timeout")
-		isVerbose, _ := cmd.Flags().GetBool("verbose")
 		isUpstream, _ := cmd.Flags().GetBool("upstream")
+		prettyLogs, _ := cmd.Flags().GetBool("prettylogs")
+		if prettyLogs == true {
+			log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+		}
+
+		if logLevel, err := zerolog.ParseLevel(loglevel); err == nil {
+			if logLevel == zerolog.NoLevel {
+				zerolog.SetGlobalLevel(zerolog.InfoLevel)
+			} else {
+				zerolog.SetGlobalLevel(logLevel)
+			}
+		}
 
 		username := ""
 		password := ""
@@ -40,7 +55,6 @@ var runCmd = &cobra.Command{
 			Sessions:      map[string]models.ExitNode{},
 			Username:      username,
 			Password:      password,
-			IsVerbose:     isVerbose,
 			Whitelist:     whitelist,
 			IsUpstream:    isUpstream,
 			ExitNodes: struct {
@@ -63,8 +77,11 @@ func init() {
 	runCmd.PersistentFlags().String("exitnodes", "./exitNodes.yml", "--exitnodes=./exitnodes.yml")
 	runCmd.PersistentFlags().String("auth", "", "--auth=user:pass")
 	runCmd.PersistentFlags().String("whitelist", "", "--whitelist=1.2.3.4,5.6.7.8")
+	runCmd.PersistentFlags().String("loglevel", "info", "--loglevel=info")
 	runCmd.PersistentFlags().Int("timeout", 0, "--timeout=0")
-	runCmd.PersistentFlags().Bool("verbose", false, "--verbose=false")
 	runCmd.PersistentFlags().Bool("upstream", false, "--upstream=false")
+	runCmd.PersistentFlags().Bool("prettylogs", false, "--prettylogs=true")
+	runCmd.PersistentFlags().Bool("verbose", false, "DEPRECATED, use loglevel instead")
+
 	runCmd.Flags()
 }
