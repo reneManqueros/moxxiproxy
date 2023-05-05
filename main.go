@@ -7,7 +7,6 @@ import (
 )
 
 func main() {
-
 	rand.Seed(time.Now().UnixMilli())
 	cmd.Execute()
 }

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/net/proxy"
 	"io"
@@ -105,6 +106,7 @@ func (p *Proxy) isInWhitelist(requestAddress string) bool {
 }
 
 func (p *Proxy) handleRequest(responseWriter http.ResponseWriter, request *http.Request) {
+
 	if p.isInWhitelist(request.RemoteAddr) == false {
 		return
 	}
@@ -153,7 +155,8 @@ func (p *Proxy) handleHTTP(responseWriter http.ResponseWriter, request *http.Req
 	defer response.Body.Close()
 	copyHeader(responseWriter.Header(), response.Header)
 	responseWriter.WriteHeader(response.StatusCode)
-	_, _ = io.Copy(responseWriter, response.Body)
+	bytesTransferred, _ := io.Copy(responseWriter, response.Body)
+	addPayloadSize(requestContext.UserID, float64(bytesTransferred))
 }
 
 func (p *Proxy) getUpstream(upstream string, addr string) (net.Conn, error) {
@@ -241,6 +244,11 @@ func (p *Proxy) handleProxyAuthRequired(responseWriter http.ResponseWriter, requ
 }
 
 func (p *Proxy) Run() {
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		http.ListenAndServe(":2112", nil)
+	}()
+
 	p.ExitNodesFromDisk()
 	err := http.ListenAndServe(p.ListenAddress, http.HandlerFunc(p.handleRequest))
 	if err != nil {
