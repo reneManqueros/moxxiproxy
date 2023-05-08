@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/net/proxy"
@@ -21,12 +22,14 @@ const HTTP200 = "HTTP/1.1 200 Connection Established\r\n\r\n"
 const HTTP407 = "407 Proxy Authentication Required"
 
 type Proxy struct {
-	IsUpstream    bool
-	ExitNodesFile string
-	ListenAddress string
-	Backends      []string
-	Sessions      map[string]ExitNode
-	ExitNodes     struct {
+	PrometheusAddress string
+	MetricsLogger     string
+	IsUpstream        bool
+	ExitNodesFile     string
+	ListenAddress     string
+	Backends          []string
+	Sessions          map[string]ExitNode
+	ExitNodes         struct {
 		All          []ExitNode
 		ByRegion     map[string][]ExitNode
 		ByInstanceID map[string]ExitNode
@@ -38,6 +41,7 @@ type Proxy struct {
 	Dialer       proxy.Dialer
 	Mutex        *sync.Mutex
 	Timeout      int
+	LogMetrics   bool
 }
 
 func (p *Proxy) GetExitNode(requestContext RequestContext) (ExitNode, string) {
@@ -137,6 +141,17 @@ func (p *Proxy) handleRequest(responseWriter http.ResponseWriter, request *http.
 }
 
 func (p *Proxy) handleHTTP(responseWriter http.ResponseWriter, request *http.Request, requestContext RequestContext) {
+	var buf bytes.Buffer
+	tee := io.TeeReader(request.Body, &buf)
+	bodySize, _ := io.ReadAll(tee)
+	urlSize := len(request.URL.String())
+
+	headersSize := 0
+	for k, v := range request.Header {
+		headersSize += len(k) + len(v)
+	}
+	requestSize := len(bodySize) + urlSize + headersSize
+
 	exitNode, _, thisDialer := p.setDialer(requestContext, true)
 	transport := http.Transport{
 		DialContext: thisDialer.(interface {
@@ -155,8 +170,25 @@ func (p *Proxy) handleHTTP(responseWriter http.ResponseWriter, request *http.Req
 	defer response.Body.Close()
 	copyHeader(responseWriter.Header(), response.Header)
 	responseWriter.WriteHeader(response.StatusCode)
+
 	bytesTransferred, _ := io.Copy(responseWriter, response.Body)
-	addPayloadSize(requestContext.UserID, float64(bytesTransferred))
+	p.LogPayload(MetricPayload{
+		Protocol:         "http",
+		UserID:           requestContext.UserID,
+		BytesTransferred: int64(requestSize),
+		Direction:        "tx",
+		Region:           requestContext.Region,
+		Host:             request.Host,
+	})
+
+	p.LogPayload(MetricPayload{
+		Protocol:         "http",
+		UserID:           requestContext.UserID,
+		BytesTransferred: bytesTransferred,
+		Direction:        "rx",
+		Region:           requestContext.Region,
+		Host:             request.Host,
+	})
 }
 
 func (p *Proxy) getUpstream(upstream string, addr string) (net.Conn, error) {
@@ -212,8 +244,8 @@ func (p *Proxy) handleTunnel(responseWriter http.ResponseWriter, request *http.R
 	}
 	_, _ = sourceConnection.Write([]byte(HTTP200))
 
-	go copyIO(sourceConnection, destinationConnection)
-	go copyIO(destinationConnection, sourceConnection)
+	go p.copyIO(sourceConnection, destinationConnection, "rx", requestContext, request.Host)
+	go p.copyIO(destinationConnection, sourceConnection, "tx", requestContext, request.Host)
 }
 
 func (p *Proxy) handleProxyAuthRequired(responseWriter http.ResponseWriter, request *http.Request) {
@@ -244,14 +276,71 @@ func (p *Proxy) handleProxyAuthRequired(responseWriter http.ResponseWriter, requ
 }
 
 func (p *Proxy) Run() {
-	go func() {
-		http.Handle("/metrics", promhttp.Handler())
-		http.ListenAndServe(":2112", nil)
-	}()
+	log.Print(p.MetricsLogger)
+	if p.MetricsLogger == "prometheus" {
+		go func() {
+			http.Handle("/metrics", promhttp.Handler())
+			if err := http.ListenAndServe(p.PrometheusAddress, nil); err != nil {
+				log.Fatal().Err(err).Msg("Prometheus handler")
+			}
+		}()
+	}
 
 	p.ExitNodesFromDisk()
 	err := http.ListenAndServe(p.ListenAddress, http.HandlerFunc(p.handleRequest))
 	if err != nil {
 		log.Fatal().Err(err).Msg("ListenAndServe")
 	}
+}
+
+func (p *Proxy) copyIO(src, dest net.Conn, direction string, requestContext RequestContext, host string) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = r.(error)
+		}
+	}()
+	defer func(src net.Conn) {
+		if src == nil {
+			err = errors.New("nil connection")
+			return
+		}
+
+		err = src.Close()
+		if err != nil {
+			return
+		}
+	}(src)
+
+	defer func(dest net.Conn) {
+		if dest == nil {
+			err = errors.New("nil connection")
+			return
+		}
+
+		err = dest.Close()
+		if err != nil {
+			return
+		}
+	}(dest)
+
+	if src == nil || dest == nil {
+		err = errors.New("nil connection")
+		return
+	}
+
+	bx, err := io.Copy(src, dest)
+	if err != nil {
+		//log.Trace().Err(err).Msg("copy")
+	}
+
+	p.LogPayload(MetricPayload{
+		Protocol:         "https",
+		UserID:           requestContext.UserID,
+		BytesTransferred: bx,
+		Direction:        direction,
+		Region:           requestContext.Region,
+		Host:             host,
+	})
+
+	return
 }
