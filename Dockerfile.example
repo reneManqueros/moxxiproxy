@@ -1,0 +1,16 @@
+FROM debian:bullseye-slim
+
+# substitute this with the desired version
+ADD https://github.com/reneManqueros/moxxiproxy/releases/download/v1.2.9/moxxiproxy_1.2.9_Linux_x86_64.tar.gz /moxxiproxy/
+WORKDIR /moxxiproxy
+
+# substitute this with the chosen version
+RUN tar xf moxxiproxy_1.2.9_Linux_x86_64.tar.gz && \
+    chmod +x /moxxiproxy/moxxiproxy
+
+# the exitNodes.yml needs to be copied via a volume to /moxxiproxy
+ENTRYPOINT [ "./moxxiproxy" ]
+CMD [ "run", \
+      "--upstream=true", \
+      "--address=0.0.0.0:1080", \
+      "--exitnodes=/moxxiproxy/exitNodes.yml" ]
