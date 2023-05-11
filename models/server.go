@@ -131,7 +131,6 @@ func (p *Proxy) handleRequest(responseWriter http.ResponseWriter, request *http.
 		}
 	} else {
 		p.handleProxyAuthRequired(responseWriter, request)
-		log.Warn().Msg("authentication required")
 	}
 }
 
