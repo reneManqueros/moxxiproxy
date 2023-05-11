@@ -168,3 +168,7 @@ curl -kxhttp://testuser_session-1234:@0.0.0.0:1989 http://page.com
 ```
 
 This will create a session under ID: 1234 and any request with that ID will use the same exit node
+
+## Containers
+The Dockerfile.example should serve as a guideline for those inclined to run
+moxxiproxy as a Docker container.
