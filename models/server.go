@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	b64 "encoding/base64"
 	"fmt"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -136,7 +137,6 @@ func (p *Proxy) handleRequest(responseWriter http.ResponseWriter, request *http.
 		}
 	} else {
 		p.handleProxyAuthRequired(responseWriter, request)
-		log.Warn().Msg("authentication required")
 	}
 }
 
@@ -193,12 +193,20 @@ func (p *Proxy) handleHTTP(responseWriter http.ResponseWriter, request *http.Req
 
 func (p *Proxy) getUpstream(upstream string, addr string) (net.Conn, error) {
 	network := "tcp"
+	hdr := make(http.Header)
+	upstream = strings.TrimPrefix(upstream, "https://")
+	upstream = strings.TrimPrefix(upstream, "http://")
+	if upstreamParts := strings.Split(upstream, "@"); len(upstreamParts) > 1 {
+		upstream = upstreamParts[1]
+		auth := b64.StdEncoding.EncodeToString([]byte(upstreamParts[0]))
+		hdr.Add("Proxy-Authorization", fmt.Sprintf("Basic %s", auth))
+	}
 
 	connectReq := &http.Request{
 		Method: "CONNECT",
 		URL:    &url.URL{Opaque: addr},
 		Host:   addr,
-		Header: make(http.Header),
+		Header: hdr,
 	}
 
 	c, err := net.DialTimeout(network, upstream, time.Duration(10)*time.Second)
@@ -226,6 +234,9 @@ func (p *Proxy) handleTunnel(responseWriter http.ResponseWriter, request *http.R
 		destinationConnection, err = p.getUpstream(exitNode.Upstream, request.Host)
 	} else {
 		destinationConnection, err = thisDialer.Dial(network, request.Host)
+	}
+	if err != nil {
+		log.Trace().Err(err).Msg("HandleTunnel")
 	}
 
 	hijacker, ok := responseWriter.(http.Hijacker)
