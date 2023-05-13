@@ -22,8 +22,14 @@ var runCmd = &cobra.Command{
 		timeout, _ := cmd.Flags().GetInt("timeout")
 		isUpstream, _ := cmd.Flags().GetBool("upstream")
 		prettyLogs, _ := cmd.Flags().GetBool("prettylogs")
+		metricsLogger, _ := cmd.Flags().GetString("metrics")
+		promaddress, _ := cmd.Flags().GetString("promaddress")
 		if prettyLogs == true {
 			log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+		}
+
+		if metricsLogger != "" && metricsLogger != "prometheus" && metricsLogger != "stdout" {
+			log.Fatal().Msg("Invalid metrics logger")
 		}
 
 		if logLevel, err := zerolog.ParseLevel(loglevel); err == nil {
@@ -66,6 +72,9 @@ var runCmd = &cobra.Command{
 				ByRegion:     map[string][]models.ExitNode{},
 				ByInstanceID: map[string]models.ExitNode{},
 			},
+			LogMetrics:        metricsLogger != "",
+			MetricsLogger:     metricsLogger,
+			PrometheusAddress: promaddress,
 		}
 		s.Run()
 	},
@@ -73,6 +82,8 @@ var runCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(runCmd)
+	runCmd.PersistentFlags().String("metrics", "", "--metrics=prometheus,stdout or --metrics=stdout")
+	runCmd.PersistentFlags().String("promaddress", "0.0.0.0:2122", "--promaddress=:2122")
 	runCmd.PersistentFlags().String("address", "0.0.0.0:1989", "--address=:1989")
 	runCmd.PersistentFlags().String("exitnodes", "./exitNodes.yml", "--exitnodes=./exitnodes.yml")
 	runCmd.PersistentFlags().String("auth", "", "--auth=user:pass")
@@ -82,6 +93,5 @@ func init() {
 	runCmd.PersistentFlags().Bool("upstream", false, "--upstream=false")
 	runCmd.PersistentFlags().Bool("prettylogs", false, "--prettylogs=true")
 	runCmd.PersistentFlags().Bool("verbose", false, "DEPRECATED, use loglevel instead")
-
 	runCmd.Flags()
 }
