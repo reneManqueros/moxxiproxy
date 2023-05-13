@@ -14,6 +14,15 @@ type MetricPayload struct {
 	Direction        string
 	Region           string
 	Host             string
+	Project          string
+}
+
+var vecFields = []string{
+	"user_id",
+	"region",
+	"protocol",
+	"host",
+	"project",
 }
 
 var vecRXBytes = promauto.NewCounterVec(
@@ -21,24 +30,14 @@ var vecRXBytes = promauto.NewCounterVec(
 		Name: "moxxi_rx_bytes",
 		Help: "The total payload received",
 	},
-	[]string{
-		"user_id",
-		"region",
-		"protocol",
-		"host",
-	},
+	vecFields,
 )
 var vecTXBytes = promauto.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "moxxi_tx_bytes",
 		Help: "The total payload sent",
 	},
-	[]string{
-		"user_id",
-		"region",
-		"protocol",
-		"host",
-	},
+	vecFields,
 )
 
 func (p *Proxy) LogPayload(payload MetricPayload) {
@@ -52,25 +51,23 @@ func (p *Proxy) LogPayload(payload MetricPayload) {
 			Str("UserID", payload.UserID).
 			Str("Region", payload.Region).
 			Str("Host", payload.Host).
+			Str("Project", payload.Project).
 			Int64("BytesTransferred", payload.BytesTransferred).
 			Msg("MetricRow")
 	}
 	if p.MetricsLogger == "prometheus" {
+		labels := prometheus.Labels{
+			"user_id":  payload.UserID,
+			"region":   payload.Region,
+			"protocol": payload.Protocol,
+			"host":     payload.Host,
+			"project":  payload.Project,
+		}
 		if payload.Direction == "rx" {
-			vecRXBytes.With(prometheus.Labels{
-				"user_id":  payload.UserID,
-				"region":   payload.Region,
-				"protocol": payload.Protocol,
-				"host":     payload.Host,
-			}).Add(float64(payload.BytesTransferred))
+			vecRXBytes.With(labels).Add(float64(payload.BytesTransferred))
 		}
 		if payload.Direction == "tx" {
-			vecTXBytes.With(prometheus.Labels{
-				"user_id":  payload.UserID,
-				"region":   payload.Region,
-				"protocol": payload.Protocol,
-				"host":     payload.Host,
-			}).Add(float64(payload.BytesTransferred))
+			vecTXBytes.With(labels).Add(float64(payload.BytesTransferred))
 		}
 	}
 }

@@ -67,6 +67,7 @@ func (p *Proxy) GetExitNode(requestContext RequestContext) (ExitNode, string) {
 		Str("exitNode", backend).
 		Str("userID", requestContext.UserID).
 		Str("session", requestContext.Session).
+		Str("project", requestContext.Project).
 		Str("region", requestContext.Region).
 		Bool("upstream", p.IsUpstream).
 		Msg("ExitNode selected")
@@ -160,7 +161,11 @@ func (p *Proxy) handleHTTP(responseWriter http.ResponseWriter, request *http.Req
 	}
 
 	if p.IsUpstream {
-		u, _ := url.Parse("http://" + exitNode.Upstream)
+		u, err := url.Parse("http://" + exitNode.Upstream)
+		if err != nil {
+			log.Err(err).Str("upstream", exitNode.Upstream).Msg("error parsing upstream")
+			return
+		}
 		transport.Proxy = http.ProxyURL(u)
 	}
 	response, err := transport.RoundTrip(request)
@@ -172,23 +177,25 @@ func (p *Proxy) handleHTTP(responseWriter http.ResponseWriter, request *http.Req
 	responseWriter.WriteHeader(response.StatusCode)
 
 	bytesTransferred, _ := io.Copy(responseWriter, response.Body)
-	p.LogPayload(MetricPayload{
-		Protocol:         "http",
-		UserID:           requestContext.UserID,
-		BytesTransferred: int64(requestSize),
-		Direction:        "tx",
-		Region:           requestContext.Region,
-		Host:             request.Host,
-	})
+	go func() {
+		p.LogPayload(MetricPayload{
+			Protocol:         "http",
+			UserID:           requestContext.UserID,
+			BytesTransferred: int64(requestSize),
+			Direction:        "tx",
+			Region:           requestContext.Region,
+			Host:             request.Host,
+		})
 
-	p.LogPayload(MetricPayload{
-		Protocol:         "http",
-		UserID:           requestContext.UserID,
-		BytesTransferred: bytesTransferred,
-		Direction:        "rx",
-		Region:           requestContext.Region,
-		Host:             request.Host,
-	})
+		p.LogPayload(MetricPayload{
+			Protocol:         "http",
+			UserID:           requestContext.UserID,
+			BytesTransferred: bytesTransferred,
+			Direction:        "rx",
+			Region:           requestContext.Region,
+			Host:             request.Host,
+		})
+	}()
 }
 
 func (p *Proxy) getUpstream(upstream string, addr string) (net.Conn, error) {
@@ -287,7 +294,6 @@ func (p *Proxy) handleProxyAuthRequired(responseWriter http.ResponseWriter, requ
 }
 
 func (p *Proxy) Run() {
-	log.Print(p.MetricsLogger)
 	if p.MetricsLogger == "prometheus" {
 		go func() {
 			http.Handle("/metrics", promhttp.Handler())
@@ -343,15 +349,15 @@ func (p *Proxy) copyIO(src, dest net.Conn, direction string, requestContext Requ
 	if err != nil {
 		//log.Trace().Err(err).Msg("copy")
 	}
-
-	p.LogPayload(MetricPayload{
-		Protocol:         "https",
-		UserID:           requestContext.UserID,
-		BytesTransferred: bx,
-		Direction:        direction,
-		Region:           requestContext.Region,
-		Host:             host,
-	})
-
+	go func() {
+		p.LogPayload(MetricPayload{
+			Protocol:         "https",
+			UserID:           requestContext.UserID,
+			BytesTransferred: bx,
+			Direction:        direction,
+			Region:           requestContext.Region,
+			Host:             host,
+		})
+	}()
 	return
 }

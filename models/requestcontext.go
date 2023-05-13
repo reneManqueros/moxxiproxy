@@ -12,7 +12,7 @@ type RequestContext struct {
 	RawUsername   string
 	UserID        string
 	Region        string
-	Project       string // Use on logging
+	Project       string
 	Session       string
 	Instance      string
 	Authenticated bool
