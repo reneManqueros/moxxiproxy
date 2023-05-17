@@ -11,6 +11,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    permissions: write-all
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -22,9 +23,7 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: moxxiproxy
-          asset_name: ${version}
-          tag: ${version}
+          asset_name: ${{ inputs.version }}
+          tag: ${{ inputs.version }}
           overwrite: true
-          body: "moxxiproxy release ${version}."
-        env:
-          version: ${{ inputs.version }}
+          body: "moxxiproxy release ${{ inputs.version }}."
