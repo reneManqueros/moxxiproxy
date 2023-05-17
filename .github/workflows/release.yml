@@ -1,0 +1,29 @@
+name: release
+run-name: release moxxiproxy binary
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "version (vx.y.z)"
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    permissions: write-all
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.18'
+      - run: make build
+      - name: upload bin to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: moxxiproxy
+          asset_name: ${{ inputs.version }}
+          tag: ${{ inputs.version }}
+          overwrite: true
+          body: "moxxiproxy release ${{ inputs.version }}."
