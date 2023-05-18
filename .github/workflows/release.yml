@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "version (vx.y.z)"
+        description: "version (x.y.z, _without_ a leading v)"
         required: true
         type: string
 
@@ -16,14 +16,16 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
         with:
-          go-version: '1.18'
-      - run: make build
+          go-version: '1.20'
+      - run: |
+          make build
+          tar -czf moxxiproxy.tar.gz moxxiproxy
       - name: upload bin to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: moxxiproxy
-          asset_name: ${{ inputs.version }}
-          tag: ${{ inputs.version }}
+          file: moxxiproxy.tar.gz
+          asset_name: moxxiproxy_${{ inputs.version }}_Linux_x86_64.tar.gz
+          tag: v${{ inputs.version }}
           overwrite: true
-          body: "moxxiproxy release ${{ inputs.version }}."
+          body: "moxxiproxy release v${{ inputs.version }}."
