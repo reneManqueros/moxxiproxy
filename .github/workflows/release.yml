@@ -28,4 +28,4 @@ jobs:
           asset_name: moxxiproxy_${{ inputs.version }}_Linux_x86_64.tar.gz
           tag: v${{ inputs.version }}
           overwrite: true
-          body: "moxxiproxy release ${{ inputs.version }}."
+          body: "moxxiproxy release v${{ inputs.version }}."
