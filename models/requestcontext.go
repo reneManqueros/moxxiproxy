@@ -9,6 +9,7 @@ import (
 )
 
 type RequestContext struct {
+	RawCreds      string
 	RawUsername   string
 	UserID        string
 	Region        string
@@ -31,6 +32,7 @@ func (rc *RequestContext) FromRequest(request *http.Request) {
 			log.Err(err).Str("method", "FromRequest").Msg("decoding auth header")
 		}
 		if userParts := strings.Split(string(data), ":"); len(userParts) > 1 {
+			rc.RawCreds = authHeader
 			rc.RawUsername = userParts[0]
 			authToken := userParts[1]
 			rc.ParseUsername(rc.RawUsername)

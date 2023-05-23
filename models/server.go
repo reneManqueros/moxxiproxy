@@ -25,9 +25,11 @@ const HTTP407 = "407 Proxy Authentication Required"
 type Proxy struct {
 	PrometheusAddress string
 	MetricsLogger     string
-	IsUpstream        bool
 	ExitNodesFile     string
 	ListenAddress     string
+	Username          string
+	Password          string
+	Whitelist         string
 	Backends          []string
 	Sessions          map[string]ExitNode
 	ExitNodes         struct {
@@ -36,13 +38,12 @@ type Proxy struct {
 		ByInstanceID map[string]ExitNode
 	}
 	SessionMutex *sync.Mutex
-	Username     string
-	Password     string
-	Whitelist    string
 	Dialer       proxy.Dialer
 	Mutex        *sync.Mutex
 	Timeout      int
 	LogMetrics   bool
+	IsUpstream   bool
+	AuthUpstream bool
 }
 
 func (p *Proxy) GetExitNode(requestContext RequestContext) (ExitNode, string) {
@@ -87,8 +88,10 @@ func (p *Proxy) setDialer(requestContext RequestContext, isClearText bool) (Exit
 	if p.IsUpstream && isClearText == false {
 		format = `%s`
 	}
-	addr, _ := net.ResolveTCPAddr(network, fmt.Sprintf(format, backend))
-
+	addr, err := net.ResolveTCPAddr(network, fmt.Sprintf(format, backend))
+	if err != nil {
+		log.Trace().Err(err).Str("backend", backend).Msg("Resolve")
+	}
 	thisDialer := &net.Dialer{
 		LocalAddr: addr,
 		Timeout:   time.Duration(p.Timeout) * time.Second,
@@ -198,7 +201,7 @@ func (p *Proxy) handleHTTP(responseWriter http.ResponseWriter, request *http.Req
 	}()
 }
 
-func (p *Proxy) getUpstream(upstream string, addr string) (net.Conn, error) {
+func (p *Proxy) getUpstream(upstream string, addr string, requestContext RequestContext) (net.Conn, error) {
 	network := "tcp"
 	hdr := make(http.Header)
 	upstream = strings.TrimPrefix(upstream, "https://")
@@ -207,6 +210,9 @@ func (p *Proxy) getUpstream(upstream string, addr string) (net.Conn, error) {
 		upstream = upstreamParts[1]
 		auth := b64.StdEncoding.EncodeToString([]byte(upstreamParts[0]))
 		hdr.Add("Proxy-Authorization", fmt.Sprintf("Basic %s", auth))
+	}
+	if p.AuthUpstream == true {
+		hdr.Add("Proxy-Authorization", fmt.Sprintf("Basic %s", requestContext.RawCreds))
 	}
 
 	connectReq := &http.Request{
@@ -220,11 +226,11 @@ func (p *Proxy) getUpstream(upstream string, addr string) (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	connectReq.Write(c)
+	_ = connectReq.Write(c)
 	br := bufio.NewReader(c)
 	resp, err := http.ReadResponse(br, connectReq)
 	if err != nil {
-		c.Close()
+		_ = c.Close()
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -238,7 +244,7 @@ func (p *Proxy) handleTunnel(responseWriter http.ResponseWriter, request *http.R
 	exitNode, network, thisDialer := p.setDialer(requestContext, false)
 
 	if p.IsUpstream == true {
-		destinationConnection, err = p.getUpstream(exitNode.Upstream, request.Host)
+		destinationConnection, err = p.getUpstream(exitNode.Upstream, request.Host, requestContext)
 	} else {
 		destinationConnection, err = thisDialer.Dial(network, request.Host)
 	}

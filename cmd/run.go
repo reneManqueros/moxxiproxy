@@ -21,6 +21,7 @@ var runCmd = &cobra.Command{
 		loglevel, _ := cmd.Flags().GetString("loglevel")
 		timeout, _ := cmd.Flags().GetInt("timeout")
 		isUpstream, _ := cmd.Flags().GetBool("upstream")
+		authUpstream, _ := cmd.Flags().GetBool("authupstream")
 		prettyLogs, _ := cmd.Flags().GetBool("prettylogs")
 		metricsLogger, _ := cmd.Flags().GetString("metrics")
 		promaddress, _ := cmd.Flags().GetString("promaddress")
@@ -63,6 +64,7 @@ var runCmd = &cobra.Command{
 			Password:      password,
 			Whitelist:     whitelist,
 			IsUpstream:    isUpstream,
+			AuthUpstream:  authUpstream,
 			ExitNodes: struct {
 				All          []models.ExitNode
 				ByRegion     map[string][]models.ExitNode
@@ -82,6 +84,7 @@ var runCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(runCmd)
+	runCmd.PersistentFlags().Int("timeout", 0, "--timeout=0")
 	runCmd.PersistentFlags().String("metrics", "", "--metrics=prometheus,stdout or --metrics=stdout")
 	runCmd.PersistentFlags().String("promaddress", "0.0.0.0:2122", "--promaddress=:2122")
 	runCmd.PersistentFlags().String("address", "0.0.0.0:1989", "--address=:1989")
@@ -89,8 +92,8 @@ func init() {
 	runCmd.PersistentFlags().String("auth", "", "--auth=user:pass")
 	runCmd.PersistentFlags().String("whitelist", "", "--whitelist=1.2.3.4,5.6.7.8")
 	runCmd.PersistentFlags().String("loglevel", "info", "--loglevel=info")
-	runCmd.PersistentFlags().Int("timeout", 0, "--timeout=0")
 	runCmd.PersistentFlags().Bool("upstream", false, "--upstream=false")
+	runCmd.PersistentFlags().Bool("authupstream", false, "--authupstream=false")
 	runCmd.PersistentFlags().Bool("prettylogs", false, "--prettylogs=true")
 	runCmd.PersistentFlags().Bool("verbose", false, "DEPRECATED, use loglevel instead")
 	runCmd.Flags()

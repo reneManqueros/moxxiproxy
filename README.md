@@ -18,7 +18,7 @@
 Download binary:
 
 ```shell
-wget https://github.com/reneManqueros/moxxiproxy/releases/download/v1.2.9/moxxiproxy_1.2.9_Linux_x86_64.tar.gz && tar xf moxxiproxy_1.2.9_Linux_x86_64.tar.gz 
+wget https://github.com/reneManqueros/moxxiproxy/releases/download/v1.3.5/moxxiproxy_1.3.5_Linux_x86_64.tar.gz && tar xf moxxiproxy_1.3.5_Linux_x86_64.tar.gz 
 ```
 
 Or download source and compile:
@@ -35,18 +35,19 @@ git clone https://github.com/reneManqueros/moxxiproxy.git && cd moxxiproxy && ma
 
 ## Parameters
 
-| Flag        | Use                                                                                                             | Default         |
-|-------------|-----------------------------------------------------------------------------------------------------------------|-----------------|
-| address     | Set the listen address                                                                                          | 0.0.0.0:1989    |         
-| exitnodes   | Path to config file                                                                                             | ./exitNodes.yml |         
-| auth        | user/password for authentication                                                                                | <empty>         |         
-| whitelist   | IP's to allow to use, allows all if blank                                                                       | <empty>         |         
-| timeout     | default timeout seconds for backen connection, 0 for infinite                                                   | 0               |             
-| upstream    | set upstream mode, uses upstream instead of interface on exitNodes file                                         | <empty>         |             
-| prettylogs  | display colorful logs, if false display them as json                                                            | false           |             
-| loglevel    | Minimum log level to print: trace, debug, info, warn, error, fatal                                              | info            |             
-| promaddress | Listen address for prometheus                                                                                   | 0.0.0.0:2122    |     
-| metrics     | How to handle metrics, accepted values: prometheus, stdout or empty for nothing; stdout requires loglevel=trace | <empty>         ||             |                                                                                 |                 |
+| Flag         | Use                                                                                                             | Default         |
+|--------------|-----------------------------------------------------------------------------------------------------------------|-----------------|
+| address      | Set the listen address                                                                                          | 0.0.0.0:1989    |         
+| exitnodes    | Path to config file                                                                                             | ./exitNodes.yml |         
+| auth         | user/password for authentication                                                                                | <empty>         |         
+| whitelist    | IP's to allow to use, allows all if blank                                                                       | <empty>         |         
+| timeout      | default timeout seconds for backen connection, 0 for infinite                                                   | 0               |             
+| upstream     | set upstream mode, uses upstream instead of interface on exitNodes file                                         | <empty>         |             
+| authupstream | sends credentials to the upstream, requires upstream to be enabled                                              | <empty>         |             
+| prettylogs   | display colorful logs, if false display them as json                                                            | false           |             
+| loglevel     | Minimum log level to print: trace, debug, info, warn, error, fatal                                              | info            |             
+| promaddress  | Listen address for prometheus                                                                                   | 0.0.0.0:2122    |     
+| metrics      | How to handle metrics, accepted values: prometheus, stdout or empty for nothing; stdout requires loglevel=trace | <empty>         ||             |                                                                                 |                 |
 
 ## ExitNodes file
 
