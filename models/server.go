@@ -23,16 +23,17 @@ const HTTP200 = "HTTP/1.1 200 Connection Established\r\n\r\n"
 const HTTP407 = "407 Proxy Authentication Required"
 
 type Proxy struct {
-	PrometheusAddress string
-	MetricsLogger     string
-	ExitNodesFile     string
-	ListenAddress     string
-	Username          string
-	Password          string
-	Whitelist         string
-	Backends          []string
-	Sessions          map[string]ExitNode
-	ExitNodes         struct {
+	PrometheusAddress      string
+	MetricsLogger          string
+	ExitNodesFile          string
+	AuthenticatedUsersFile string
+	ListenAddress          string
+	Username               string
+	Password               string
+	Whitelist              string
+	Backends               []string
+	Sessions               map[string]ExitNode
+	ExitNodes              struct {
 		All          []ExitNode
 		ByRegion     map[string][]ExitNode
 		ByInstanceID map[string]ExitNode

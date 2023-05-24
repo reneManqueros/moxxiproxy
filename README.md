@@ -18,7 +18,7 @@
 Download binary:
 
 ```shell
-wget https://github.com/reneManqueros/moxxiproxy/releases/download/v1.3.5/moxxiproxy_1.3.5_Linux_x86_64.tar.gz && tar xf moxxiproxy_1.3.5_Linux_x86_64.tar.gz 
+wget https://github.com/reneManqueros/moxxiproxy/releases/download/v1.3.6/moxxiproxy_1.3.6_Linux_x86_64.tar.gz && tar xf moxxiproxy_1.3.6_Linux_x86_64.tar.gz 
 ```
 
 Or download source and compile:
@@ -40,6 +40,7 @@ git clone https://github.com/reneManqueros/moxxiproxy.git && cd moxxiproxy && ma
 | address      | Set the listen address                                                                                          | 0.0.0.0:1989    |         
 | exitnodes    | Path to config file                                                                                             | ./exitNodes.yml |         
 | auth         | user/password for authentication                                                                                | <empty>         |         
+| usersfile    | Path to list of authenticated users, requires auth to be empty                                                  | <empty>         |         
 | whitelist    | IP's to allow to use, allows all if blank                                                                       | <empty>         |         
 | timeout      | default timeout seconds for backen connection, 0 for infinite                                                   | 0               |             
 | upstream     | set upstream mode, uses upstream instead of interface on exitNodes file                                         | <empty>         |             
@@ -184,6 +185,20 @@ curl -kxhttp://testuser_session-1234:@0.0.0.0:1989 http://page.com
 ```
 
 This will create a session under ID: 1234 and any request with that ID will use the same exit node
+
+
+#### Sample users file:
+
+```yaml
+user1: password1
+user2: password2
+```
+
+Service ran as [path can be anything]:
+
+```shell
+moxxiproxy run --usersfile=users.yml
+```
 
 ## Containers
 The Dockerfile.example should serve as a guideline for those inclined to run

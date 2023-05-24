@@ -36,8 +36,7 @@ func (rc *RequestContext) FromRequest(request *http.Request) {
 			rc.RawUsername = userParts[0]
 			authToken := userParts[1]
 			rc.ParseUsername(rc.RawUsername)
-			thisUser, userExists := Users{}.ByID(rc.UserID)
-			if userExists == true && thisUser.UserID == rc.UserID && thisUser.AuthToken == authToken {
+			if password, ok := UserMap[rc.UserID]; ok == true && authToken == password {
 				rc.Authenticated = true
 			}
 		}

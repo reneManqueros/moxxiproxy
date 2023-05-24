@@ -25,6 +25,7 @@ var runCmd = &cobra.Command{
 		prettyLogs, _ := cmd.Flags().GetBool("prettylogs")
 		metricsLogger, _ := cmd.Flags().GetString("metrics")
 		promaddress, _ := cmd.Flags().GetString("promaddress")
+		usersfile, _ := cmd.Flags().GetString("usersfile")
 		if prettyLogs == true {
 			log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 		}
@@ -46,11 +47,10 @@ var runCmd = &cobra.Command{
 		if authParts := strings.Split(auth, ":"); len(authParts) > 1 {
 			username = authParts[0]
 			password = authParts[1]
-			models.UserMap = make(map[string]models.User)
-			models.UserMap[username] = models.User{
-				UserID:    username,
-				AuthToken: password,
-			}
+			models.UserMap = make(map[string]string)
+			models.UserMap[username] = password
+		} else if usersfile != "" {
+			models.Users{}.Load(usersfile)
 		}
 
 		s := models.Proxy{
@@ -92,6 +92,7 @@ func init() {
 	runCmd.PersistentFlags().String("auth", "", "--auth=user:pass")
 	runCmd.PersistentFlags().String("whitelist", "", "--whitelist=1.2.3.4,5.6.7.8")
 	runCmd.PersistentFlags().String("loglevel", "info", "--loglevel=info")
+	runCmd.PersistentFlags().String("usersfile", "./users.yml", "--usersfile=./users.yml")
 	runCmd.PersistentFlags().Bool("upstream", false, "--upstream=false")
 	runCmd.PersistentFlags().Bool("authupstream", false, "--authupstream=false")
 	runCmd.PersistentFlags().Bool("prettylogs", false, "--prettylogs=true")
