@@ -13,12 +13,12 @@ var UserMap map[string]string
 func (u Users) Load(filename string) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
-		log.Fatal().Err(err).Str("filename", filename).Msg("Users.Load")
+		log.Debug().Err(err).Str("filename", filename).Msg("Users.Load")
 		return
 	}
 
 	err = yaml.Unmarshal(data, &UserMap)
 	if err != nil {
-		log.Fatal().Err(err).Str("filename", filename).Msg("Users.Load.Unmarshall")
+		log.Info().Err(err).Str("filename", filename).Msg("Users.Load.Unmarshall")
 	}
 }

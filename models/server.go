@@ -123,7 +123,7 @@ func (p *Proxy) handleRequest(responseWriter http.ResponseWriter, request *http.
 	requestContext := RequestContext{}
 
 	passedAuthentication := false
-	if p.Username == "" && p.Password == "" {
+	if len(UserMap) == 0 {
 		passedAuthentication = true
 	}
 
