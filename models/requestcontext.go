@@ -40,8 +40,6 @@ func (rc *RequestContext) FromRequest(request *http.Request) {
 				rc.Authenticated = true
 			}
 		}
-		request.Header.Del("Proxy-Connection")
-		request.Header.Del("Proxy-Authorization")
 	}
 }
 

@@ -121,6 +121,16 @@ func (p *Proxy) handleRequest(responseWriter http.ResponseWriter, request *http.
 		return
 	}
 	requestContext := RequestContext{}
+	// Delete hop by hop headers
+	for _, v := range []string{
+		"Proxy-Connection",
+		"Proxy-Authorization",
+		"Proxy-Authenticate",
+		"Te",
+		"Trailers",
+	} {
+		request.Header.Del(v)
+	}
 
 	passedAuthentication := false
 	if len(UserMap) == 0 {
