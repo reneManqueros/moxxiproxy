@@ -86,7 +86,7 @@ func (p *Proxy) setDialer(requestContext RequestContext, isClearText bool) (Exit
 	//}
 
 	format := `%s:0`
-	if p.IsUpstream == true {
+	if p.IsUpstream == true && isClearText == false {
 		format = `%s`
 	}
 	addr, err := net.ResolveTCPAddr(network, fmt.Sprintf(format, backend))
