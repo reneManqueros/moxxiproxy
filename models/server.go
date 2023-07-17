@@ -86,7 +86,7 @@ func (p *Proxy) setDialer(requestContext RequestContext, isClearText bool) (Exit
 	//}
 
 	format := `%s:0`
-	if p.IsUpstream && isClearText == false {
+	if p.IsUpstream == true {
 		format = `%s`
 	}
 	addr, err := net.ResolveTCPAddr(network, fmt.Sprintf(format, backend))
@@ -116,21 +116,22 @@ func (p *Proxy) isInWhitelist(requestAddress string) bool {
 }
 
 func (p *Proxy) handleRequest(responseWriter http.ResponseWriter, request *http.Request) {
-
+	defer func() {
+		// Delete hop by hop headers
+		for _, v := range []string{
+			"Proxy-Connection",
+			"Proxy-Authorization",
+			"Proxy-Authenticate",
+			"Te",
+			"Trailers",
+		} {
+			request.Header.Del(v)
+		}
+	}()
 	if p.isInWhitelist(request.RemoteAddr) == false {
 		return
 	}
 	requestContext := RequestContext{}
-	// Delete hop by hop headers
-	for _, v := range []string{
-		"Proxy-Connection",
-		"Proxy-Authorization",
-		"Proxy-Authenticate",
-		"Te",
-		"Trailers",
-	} {
-		request.Header.Del(v)
-	}
 
 	passedAuthentication := false
 	if len(UserMap) == 0 {
