@@ -80,15 +80,16 @@ func (p *Proxy) setDialer(requestContext RequestContext, isClearText bool) (Exit
 	exitNode, backend := p.GetExitNode(requestContext)
 
 	network := "tcp4"
-	// ToDo: implement this in a cleaner way
-	//if strings.Contains(backend, ":") && len(backend) > 15 && ps.IsUpstream == false {
-	//	network = "tcp6"
-	//}
-
 	format := `%s:0`
 	if p.IsUpstream == true && isClearText == false {
 		format = `%s`
 	}
+
+	if len(strings.Split(backend, ":")) > 4 && len(backend) > 15 && p.IsUpstream == false {
+		network = "tcp6"
+		format = `%s`
+	}
+
 	addr, err := net.ResolveTCPAddr(network, fmt.Sprintf(format, backend))
 	if err != nil {
 		log.Trace().Err(err).Str("backend", backend).Msg("Resolve")
