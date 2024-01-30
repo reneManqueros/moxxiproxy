@@ -12,13 +12,14 @@
 - [x] Session stickiness
 - [x] Group backends by regions
 - [x] Logs
+- [x] IPv6
 
 ## Installation
 
 Download binary:
 
 ```shell
-wget https://github.com/reneManqueros/moxxiproxy/releases/download/v1.3.6/moxxiproxy_1.3.6_Linux_x86_64.tar.gz && tar xf moxxiproxy_1.3.6_Linux_x86_64.tar.gz 
+wget https://github.com/reneManqueros/moxxiproxy/releases/download/v1.4.1/moxxiproxy_1.4.1_Linux_x86_64.tar.gz && tar xf moxxiproxy_1.4.1_Linux_x86_64.tar.gz 
 ```
 
 Or download source and compile:

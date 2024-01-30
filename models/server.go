@@ -87,7 +87,7 @@ func (p *Proxy) setDialer(requestContext RequestContext, isClearText bool) (Exit
 
 	if len(strings.Split(backend, ":")) > 4 && len(backend) > 15 && p.IsUpstream == false {
 		network = "tcp6"
-		format = `%s`
+		format = `[%s]:0`
 	}
 
 	addr, err := net.ResolveTCPAddr(network, fmt.Sprintf(format, backend))
