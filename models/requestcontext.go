@@ -27,9 +27,10 @@ func (rc *RequestContext) FromRequest(request *http.Request) {
 	if value, ok := request.Header["Proxy-Authorization"]; ok && len(value) > 0 {
 		authHeader := value[0]
 		authHeader = strings.TrimPrefix(authHeader, "Basic ")
+		authHeader = strings.TrimPrefix(authHeader, "basic ")
 		data, err := base64.StdEncoding.DecodeString(authHeader)
 		if err != nil {
-			log.Err(err).Str("method", "FromRequest").Msg("decoding auth header")
+			log.Err(err).Str("method", "FromRequest").Str("Header", authHeader).Msg("decoding auth header")
 		}
 		if userParts := strings.Split(string(data), ":"); len(userParts) > 1 {
 			rc.RawCreds = authHeader
