@@ -91,7 +91,13 @@ func (p *Proxy) setDialer(requestContext RequestContext, isClearText bool) (Exit
 	}
 	backendAddress := backend
 	if strings.Contains(backendAddress, "@") == true {
-		parsedURL, _ := url.Parse(backend)
+		if beParts := strings.Split(backendAddress, "@"); len(beParts) == 2 {
+			backendAddress = beParts[1]
+		}
+		if strings.HasPrefix(backendAddress, "http") == false {
+			backendAddress = "http://" + backendAddress
+		}
+		parsedURL, _ := url.Parse(backendAddress)
 		backendAddress = fmt.Sprintf(`%s:%s`, parsedURL.Host, parsedURL.Port())
 	}
 
@@ -181,7 +187,11 @@ func (p *Proxy) handleHTTP(responseWriter http.ResponseWriter, request *http.Req
 		}).DialContext,
 	}
 	if p.IsUpstream {
-		u, err := url.Parse("http://" + exitNode.Upstream)
+		exitNodeUpstream := exitNode.Upstream
+		if strings.HasPrefix(exitNodeUpstream, "http") == false {
+			exitNodeUpstream = "http://" + exitNodeUpstream
+		}
+		u, err := url.Parse(exitNodeUpstream)
 		if err != nil {
 			log.Err(err).Str("upstream", exitNode.Upstream).Msg("error parsing upstream")
 			return
