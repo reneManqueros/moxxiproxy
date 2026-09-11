@@ -6,10 +6,6 @@ import (
 	"context"
 	b64 "encoding/base64"
 	"fmt"
-	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/rs/zerolog/log"
-	"golang.org/x/net/proxy"
 	"io"
 	"net"
 	"net/http"
@@ -17,6 +13,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/net/proxy"
 )
 
 const HTTP200 = "HTTP/1.1 200 Connection Established\r\n\r\n"
@@ -26,6 +27,8 @@ type Proxy struct {
 	PrometheusAddress      string
 	MetricsLogger          string
 	ExitNodesFile          string
+	BlockedURLsFile        string
+	BlockedURLs            BlockedURLs
 	AuthenticatedUsersFile string
 	ListenAddress          string
 	Username               string
@@ -158,6 +161,9 @@ func (p *Proxy) handleRequest(responseWriter http.ResponseWriter, request *http.
 	}
 
 	if passedAuthentication == true {
+		if p.ShouldBlock(request.Host) == true {
+			return
+		}
 		if request.Method == http.MethodConnect {
 			p.handleTunnel(responseWriter, request, requestContext)
 		} else {
@@ -348,6 +354,7 @@ func (p *Proxy) Run() {
 	}
 
 	p.ExitNodesFromDisk()
+	p.BlockedURLsFromDisk()
 	err := http.ListenAndServe(p.ListenAddress, http.HandlerFunc(p.handleRequest))
 	if err != nil {
 		log.Fatal().Err(err).Msg("ListenAndServe")

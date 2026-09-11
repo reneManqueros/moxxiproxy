@@ -1,13 +1,14 @@
 package cmd
 
 import (
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
 	"moxxiproxy/models"
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"github.com/spf13/cobra"
 )
 
 var runCmd = &cobra.Command{
@@ -25,6 +26,7 @@ var runCmd = &cobra.Command{
 		prettyLogs, _ := cmd.Flags().GetBool("prettylogs")
 		metricsLogger, _ := cmd.Flags().GetString("metrics")
 		promaddress, _ := cmd.Flags().GetString("promaddress")
+		blockedURLsFile, _ := cmd.Flags().GetString("blockedurls")
 		usersfile, _ := cmd.Flags().GetString("usersfile")
 		if prettyLogs == true {
 			log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
@@ -54,17 +56,18 @@ var runCmd = &cobra.Command{
 		}
 
 		s := models.Proxy{
-			ExitNodesFile: exitnodesFile,
-			ListenAddress: listenAddress,
-			Timeout:       timeout,
-			Mutex:         &sync.Mutex{},
-			SessionMutex:  &sync.Mutex{},
-			Sessions:      map[string]models.ExitNode{},
-			Username:      username,
-			Password:      password,
-			Whitelist:     whitelist,
-			IsUpstream:    isUpstream,
-			AuthUpstream:  authUpstream,
+			ExitNodesFile:   exitnodesFile,
+			BlockedURLsFile: blockedURLsFile,
+			ListenAddress:   listenAddress,
+			Timeout:         timeout,
+			Mutex:           &sync.Mutex{},
+			SessionMutex:    &sync.Mutex{},
+			Sessions:        map[string]models.ExitNode{},
+			Username:        username,
+			Password:        password,
+			Whitelist:       whitelist,
+			IsUpstream:      isUpstream,
+			AuthUpstream:    authUpstream,
 			ExitNodes: struct {
 				All          []models.ExitNode
 				ByRegion     map[string][]models.ExitNode
@@ -93,6 +96,7 @@ func init() {
 	runCmd.PersistentFlags().String("whitelist", "", "--whitelist=1.2.3.4,5.6.7.8")
 	runCmd.PersistentFlags().String("loglevel", "info", "--loglevel=info")
 	runCmd.PersistentFlags().String("usersfile", "./users.yml", "--usersfile=./users.yml")
+	runCmd.PersistentFlags().String("blockedurls", "", "--blockedurls=./blockedurls.yml")
 	runCmd.PersistentFlags().Bool("upstream", false, "--upstream=false")
 	runCmd.PersistentFlags().Bool("authupstream", false, "--authupstream=false")
 	runCmd.PersistentFlags().Bool("prettylogs", false, "--prettylogs=true")

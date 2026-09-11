@@ -3,10 +3,11 @@ package models
 import (
 	"errors"
 	"fmt"
-	"github.com/rs/zerolog/log"
-	"gopkg.in/yaml.v2"
 	"math/rand"
 	"os"
+
+	"github.com/rs/zerolog/log"
+	"gopkg.in/yaml.v2"
 )
 
 type ExitNode struct {
