@@ -40,6 +40,7 @@ git clone https://github.com/reneManqueros/moxxiproxy.git && cd moxxiproxy && ma
 |--------------|-----------------------------------------------------------------------------------------------------------------|-----------------|
 | address      | Set the listen address                                                                                          | 0.0.0.0:1989    |         
 | exitnodes    | Path to config file                                                                                             | ./exitNodes.yml |         
+| blockedurls  | Path to blockedURLs file                                                                                        | <empty>         |         
 | auth         | user/password for authentication                                                                                | <empty>         |         
 | usersfile    | Path to list of authenticated users, requires auth to be empty                                                  | <empty>         |         
 | whitelist    | IP's to allow to use, allows all if blank                                                                       | <empty>         |         
@@ -188,7 +189,7 @@ curl -kxhttp://testuser_session-1234:@0.0.0.0:1989 http://page.com
 This will create a session under ID: 1234 and any request with that ID will use the same exit node
 
 
-#### Sample users file:
+## Sample users file:
 
 ```yaml
 user1: password1
@@ -199,6 +200,27 @@ Service ran as [path can be anything]:
 
 ```shell
 moxxiproxy run --usersfile=users.yml
+```
+
+## Sample blocked URLs file:
+
+As the name implies, you can block by suffix, prefix, term (contains) or exact match (hosts)
+
+```yaml
+suffixes:
+  - ".badsuffix"
+prefixes:
+  - "badprefix"
+terms:
+  - "somethinginthemiddle"
+hosts:
+  - "www.badhost.com"
+```
+
+Service ran as [path can be anything]:
+
+```shell
+moxxiproxy run --blockedurls=blockedURLs.yml
 ```
 
 ## Containers
